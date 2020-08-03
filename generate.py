@@ -15,23 +15,16 @@ There can be a few seconds lag between the time the home directory appears
 and the quota is set, but that should be ok for now (we can fix that with
 inotify if we need to).
 
-This script will:
-
-1. Discover home directories inside a given set of paths
-2. Ensure they have a deterministic entry in /etc/projects & /etc/prjoid
-3. Run appropriate xfs_quota commands to set quotas for those directories
-4. Watch for new home directories and repeat the process.
-
 Your home directories must already be on an XFS file system, with prjquota
 mount option enabled.
 
-Runs as a reconciliation loop. It tries to keep the following pieces in
-sync:
+The script runs two reconciliation loops:
 
-1. List of home directories (from paths given)
-2. Project ID files `/etc/project` and `/etc/projids`
-3. XFS quota project setup presence (via `xfs_quota`)
-4. XFS quota limits given.
+1. Entries in /etc/projects & /etc/projid for all home directories in the
+   given paths
+2. Correct xfs_quota project & limit setup for each entry in /etc/projid
+
+This is run in a loop, and should provide fairly robust quotaing setup.
 """
 import sys
 import os
@@ -81,11 +74,70 @@ def get_quotas():
     return quotas
 
 
-def write_projfiles(projects, projects_file_path, projid_file_path):
-    with open(projects_file_path, 'w') as projects_file, open(projid_file_path, 'w') as projid_file:
-        for path, id in projects.items():
-            projid_file.write(f'{path}:{id}\n')
-            projects_file.write(f'{id}:{path}\n')
+def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid):
+    """
+    Make sure each homedir in paths has an appropriate projid entry
+    """
+    # Fetch existing home directories
+    homedirs = [ent.path for path in paths for ent in os.scandir(path) if ent.is_dir()]
+
+    # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
+    projects = parse_projids(projid_file_path)
+
+    # Check if there are any homedirs that aren't in projects
+    new_homes = [h for h in homedirs if h not in projects]
+
+    # Make sure /etc/projid & /etc/projects are in sync with home dirs
+    if new_homes:
+        projid_file_dirty = False
+        for home in new_homes:
+            # Ensure an entry exists in projects
+            if home not in projects:
+                projects[home] = max(projects.values() or [min_projid]) + 1
+                projid_file_dirty = True
+                print(f'Found new project {home}')
+
+        if projid_file_dirty:
+            # FIXME: make this an atomic write
+            with open(projects_file_path, 'w') as projects_file, open(projid_file_path, 'w') as projid_file:
+                for path, id in projects.items():
+                    projid_file.write(f'{path}:{id}\n')
+                    projects_file.write(f'{id}:{path}\n')
+            print(f'Writing /etc/projid and /etc/projects')
+
+def reconcile_quotas(projid_file_path, hard_quota_kb):
+    """
+    Make sure each project in /etc/projid has correct hard quota set
+    """
+
+    # Get current set of projects on disk
+    projects = parse_projids(projid_file_path)
+    # Fetch quota information from xfs_quota
+    quotas = get_quotas()
+
+    # Check for projects that don't have any nor correct quota
+    changed_projects = [p for p in projects if quotas.get(p, {}) .get('hard') != hard_quota_kb]
+
+    # Make sure xfs_quotas is in sync
+    if changed_projects:
+        for project in changed_projects:
+            mountpoint = mountpoint_for(project)
+            if project not in quotas:
+                subprocess.check_call([
+                    'xfs_quota', '-x', '-c',
+                    f'project -s {project}',
+                    mountpoint
+                ])
+                print(f'Setting up xfs_quota project for {project}')
+            if project not in quotas or quotas[project]['hard'] != hard_quota_kb:
+                subprocess.check_call([
+                    'xfs_quota', '-x', '-c',
+                    f'limit -p bhard={hard_quota_kb}k {project}',
+                    mountpoint
+                ])
+                print(f'Setting limit for project {project} to {hard_quota_kb}k')
+
+
 
 def main():
 
@@ -110,53 +162,8 @@ def main():
     hard_quota_kb = int(args.hard_quota * 1024 * 1024)
 
     while True:
-        # Fetch existing home directories
-        homedirs = [ent.path for path in args.paths for ent in os.scandir(path) if ent.is_dir()]
-        # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
-        projects = parse_projids(args.projid_file)
-        # Fetch quota information from xfs_quota
-        quotas = get_quotas()
-
-        # Check if there are any homedirs that aren't in projects
-        changed_entries = [h for h in homedirs if h not in projects]
-        # Check for home directories that don't have correct quota
-        changed_entries += [h for h in homedirs if h in quotas and quotas[h]['hard'] != hard_quota_kb]
-
-        # Make sure /etc/projid & /etc/projects are in sync with home dirs
-        if changed_entries:
-            projid_file_dirty = False
-            for entry in changed_entries:
-                # Ensure an entry exists in projects
-                if entry not in projects:
-                    projects[entry] = max(projects.values() or [args.min_projid]) + 1
-                    projid_file_dirty = True
-                    print(f'Found new project {entry}')
-
-            if projid_file_dirty:
-                write_projfiles(projects, args.projects_file, args.projid_file)
-                print(f'Writing /etc/projid and /etc/projects')
-
-        # Make sure xfs_quotas is in sync
-        # /etc/projid & /etc/projects need to be already in sync before this can work
-        if changed_entries:
-            for entry in changed_entries:
-                mountpoint = mountpoint_for(entry)
-                if entry not in quotas:
-                    subprocess.check_call([
-                        'xfs_quota', '-x', '-c',
-                        f'project -s {entry}',
-                        mountpoint
-                    ])
-                    print(f'Setting up xfs_quota project for {entry}')
-                if entry not in quotas or quotas[entry]['hard'] != hard_quota_kb:
-                    print(quotas[entry])
-                    subprocess.check_call([
-                        'xfs_quota', '-x', '-c',
-                        f'limit -p bhard={hard_quota_kb}k {entry}',
-                        mountpoint
-                    ])
-                    print(f'Setting limit for project {entry} to {hard_quota_kb}k')
-
+        reconcile_projfiles(args.paths, args.projects_file, args.projid_file, args.min_projid)
+        reconcile_quotas(args.projid_file, hard_quota_kb)
         time.sleep(args.wait_time)
 
 if __name__ == '__main__':
