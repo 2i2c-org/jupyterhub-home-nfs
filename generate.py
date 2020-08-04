@@ -25,6 +25,9 @@ The script runs two reconciliation loops:
 2. Correct xfs_quota project & limit setup for each entry in /etc/projid
 
 This is run in a loop, and should provide fairly robust quotaing setup.
+
+This script *owns* /etc/projects and /etc/projid. If there are entries
+there that aren't put in there by this script, they will be removed!
 """
 import sys
 import os
@@ -76,34 +79,47 @@ def get_quotas():
 
 def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid):
     """
-    Make sure each homedir in paths has an appropriate projid entry
+    Make sure each homedir in paths has an appropriate projid entry.
+
+    This 'owns' /etc/projets & /etc/projid as well. If there are extra entries there,
+    they will be removed!
     """
     # Fetch existing home directories
-    homedirs = [ent.path for path in paths for ent in os.scandir(path) if ent.is_dir()]
+    # Sort to provide consistent ordering across runs
+    homedirs = sorted([ent.path for path in paths for ent in os.scandir(path) if ent.is_dir()])
+    print(homedirs)
 
     # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
     projects = parse_projids(projid_file_path)
+    print(projects)
 
-    # Check if there are any homedirs that aren't in projects
-    new_homes = [h for h in homedirs if h not in projects]
+    # We have to write /etc/projid & /etc/projects if they aren't completely in sync
+    projid_file_dirty = sorted(list(projects.keys())) != sorted(homedirs)
 
-    # Make sure /etc/projid & /etc/projects are in sync with home dirs
-    if new_homes:
-        projid_file_dirty = False
-        for home in new_homes:
-            # Ensure an entry exists in projects
-            if home not in projects:
-                projects[home] = max(projects.values() or [min_projid]) + 1
-                projid_file_dirty = True
-                print(f'Found new project {home}')
+    if projid_file_dirty:
+        # Check if there are any homedirs that aren't in projects
+        new_homes = [h for h in homedirs if h not in projects]
 
-        if projid_file_dirty:
-            # FIXME: make this an atomic write
-            with open(projects_file_path, 'w') as projects_file, open(projid_file_path, 'w') as projid_file:
-                for path, id in projects.items():
-                    projid_file.write(f'{path}:{id}\n')
-                    projects_file.write(f'{id}:{path}\n')
-            print(f'Writing /etc/projid and /etc/projects')
+        # Make sure /etc/projid & /etc/projects are in sync with home dirs
+        if new_homes:
+            for home in new_homes:
+                # Ensure an entry exists in projects
+                if home not in projects:
+                    projects[home] = max(projects.values() or [min_projid]) + 1
+                    projid_file_dirty = True
+                    print(f'Found new project {home}')
+
+        # Remove projects that don't have corresponding homedirs
+        projects = {k: v for k, v in projects.items() if k in homedirs}
+
+
+        # FIXME: make this an atomic write
+        with open(projects_file_path, 'w') as projects_file, open(projid_file_path, 'w') as projid_file:
+            for path, id in projects.items():
+                projid_file.write(f'{path}:{id}\n')
+                projects_file.write(f'{id}:{path}\n')
+
+        print(f'Writing /etc/projid and /etc/projects')
 
 def reconcile_quotas(projid_file_path, hard_quota_kb):
     """
