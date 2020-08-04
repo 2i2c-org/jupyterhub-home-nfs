@@ -1,6 +1,6 @@
 import os
 import tempfile
-from generate import reconcile_projfiles
+from generate import reconcile_projfiles, OWNERSHIP_PREAMBLE
 import subprocess
 
 def test_reconcile_projids():
@@ -35,8 +35,8 @@ def test_reconcile_projids():
             projid_contents = projid_file.read().decode()
             projects_contents = projects_file.read().decode()
 
-            expected_projid_contents = '\n'.join([f'{os.path.join(base_dir, k)}:{v}' for k, v in homedirs.items()]) + '\n'
-            expected_projects_contents = '\n'.join([f'{v}:{os.path.join(base_dir, k)}' for k, v in homedirs.items()]) + '\n'
+            expected_projid_contents = OWNERSHIP_PREAMBLE + '\n'.join([f'{os.path.join(base_dir, k)}:{v}' for k, v in homedirs.items()]) + '\n'
+            expected_projects_contents = OWNERSHIP_PREAMBLE + '\n'.join([f'{v}:{os.path.join(base_dir, k)}' for k, v in homedirs.items()]) + '\n'
 
             assert projid_contents == expected_projid_contents
             assert projects_contents == expected_projects_contents
