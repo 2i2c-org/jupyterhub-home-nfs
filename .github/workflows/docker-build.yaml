@@ -40,5 +40,5 @@ jobs:
         file: ./nfs-ganesha/Dockerfile
         platforms: linux/amd64,linux/arm64
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:{{ github.sha }}, ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}, ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
         labels: org.opencontainers.image.source="${{ github.repository }}"
