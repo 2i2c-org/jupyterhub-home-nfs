@@ -1,0 +1,21 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: nfs-client
+  namespace: nfs-test
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    command:
+    - sleep
+    - "3600"
+    volumeMounts:
+    - name: data
+      mountPath: /data
+      subPath: alice
+  volumes:
+  - name: data
+    nfs:
+      server: "nfs-service.nfs-test.svc.cluster.local"
+      path: "/"
