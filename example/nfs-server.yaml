@@ -71,9 +71,6 @@ spec:
           containerPort: 111
         securityContext:
           privileged: true
-          capabilities:
-            add:
-              - SYS_ADMIN
         volumeMounts:
         - name: home-directories
           mountPath: /export
