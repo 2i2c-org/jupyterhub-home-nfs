@@ -1,0 +1,30 @@
+image:
+  nfsServer:
+    repository: ghcr.io/sunu/nfs-ganesha
+    tag: 402484a8540558e822b5eb092802fa65a09383cb
+  quotaEnforcer:
+    repository: ghcr.io/sunu/nfs-get-quota-your-home
+    tag: f9cf31cf51a1794b4c359dfa9aa7a6fe8a8f4c71
+
+persistentVolume:
+  size: 10Gi
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  annotations: {}
+
+service:
+  type: ClusterIP
+
+quotaEnforcer:
+  # quota in GB
+  hardQuota: "0.001"
+
+# Cloud provider specific configurations
+eks:
+  enabled: false
+  volumeId: "your-eks-volume-id"
+
+gke:
+  enabled: false
+  volumeId: "your-gke-volume-id"

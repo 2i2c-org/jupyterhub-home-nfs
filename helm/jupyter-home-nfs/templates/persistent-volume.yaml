@@ -1,0 +1,34 @@
+{{- if or .Values.eks.enabled .Values.gke.enabled -}}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-home-directories-volume
+spec:
+  capacity:
+    storage: {{ .Values.persistentVolume.size }}
+  volumeMode: Filesystem
+  accessModes:
+    {{- toYaml .Values.persistentVolume.accessModes | nindent 4 }}
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  {{- if .Values.eks.enabled }}
+  csi:
+    driver: ebs.csi.aws.com
+    fsType: xfs
+    volumeHandle: {{ .Values.eks.volumeId }}
+  {{- else if .Values.gke.enabled }}
+  csi:
+    driver: pd.csi.storage.gke.io
+    fsType: xfs
+    volumeHandle: {{ .Values.gke.volumeId }}
+  {{- end }}
+  mountOptions:
+    - rw
+    - relatime
+    - nouuid
+    - attr2
+    - inode64
+    - logbufs=8
+    - logbsize=32k
+    - pquota
+{{- end }}

@@ -1,0 +1,11 @@
+NFS Server has been deployed.
+{{- if .Values.eks.enabled }}
+Using EKS with volume ID: {{ .Values.eks.volumeId }}
+{{- else if .Values.gke.enabled }}
+Using GKE with volume ID: {{ .Values.gke.volumeId }}
+{{- else }}
+Using dynamic provisioning.
+{{- end }}
+
+Your NFS server is now available inside the cluster at the following address:
+{{ .Release.Name }}-service.{{ .Release.Namespace }}.svc.cluster.local
