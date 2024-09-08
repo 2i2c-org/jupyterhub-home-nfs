@@ -1,0 +1,47 @@
+name: Build and Publish Docker Images and Helm Chart
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish-charts:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install chartpress
+      run: pip install chartpress
+
+    - name: Configure Git
+      run: |
+        git config user.name "${{ github.actor }}"
+        git config user.email "${{ github.actor }}@users.noreply.github.com"
+
+    - name: Run chartpress
+      run: |
+        chartpress --push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::$(cat helm/jupyter-home-nfs/Chart.yaml | grep version | awk '{print $2}')
+
+    - name: Package Helm Chart
+      run: |
+        helm package helm/jupyter-home-nfs -d .helm-charts
+
+    - name: Push Helm Chart
+      run: |
+        helm push .helm-charts/jupyter-home-nfs-${{ steps.get_version.outputs.VERSION }}.tgz oci://ghcr.io/sunu/jupyter-home-nfs
