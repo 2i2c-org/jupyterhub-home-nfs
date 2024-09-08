@@ -1,0 +1,15 @@
+charts:
+  - name: jupyter-home-nfs
+    chartPath: helm/jupyter-home-nfs
+    imagePrefix: ghcr.io/sunu/
+    repo:
+      git: sunu/jupyter-home-nfs
+    images:
+      get-quota-your-home:
+        valuesPath: quotaEnforcer.image
+        contextPath: ./get-quota-your-home
+        dockerfilePath: ./get-quota-your-home/Dockerfile
+      nfs-ganesha:
+        valuesPath: nfsServer.image
+        contextPath: ./nfs-ganesha
+        dockerfilePath: ./nfs-ganesha/Dockerfile
