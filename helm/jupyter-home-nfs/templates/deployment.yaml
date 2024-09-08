@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: nfs-server
-        image: "{{ .Values.image.nfsServer.repository }}:{{ .Values.image.nfsServer.tag }}"
+        image: "{{ .Values.nfsServer.image.repository }}:{{ .Values.nfsServer.image.tag }}"
         ports:
         - name: nfs
           containerPort: 2049
@@ -28,7 +28,7 @@ spec:
         - name: home-directories
           mountPath: /export
       - name: enforce-xfs-quota
-        image: "{{ .Values.image.quotaEnforcer.repository }}:{{ .Values.image.quotaEnforcer.tag }}"
+        image: "{{ .Values.quotaEnforcer.image.repository }}:{{ .Values.quotaEnforcer.image.tag }}"
         command: ["/usr/local/bin/generate.py", "/export", "--hard-quota", "{{ .Values.quotaEnforcer.hardQuota }}"]
         securityContext:
           privileged: true
