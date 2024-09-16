@@ -1,12 +1,12 @@
 nfsServer:
   image:
     repository: ghcr.io/sunu/nfs-ganesha
-    tag: 402484a8540558e822b5eb092802fa65a09383cb
+    tag: 0.0.2
 
 quotaEnforcer:
   image:
     repository: ghcr.io/sunu/get-quota-your-home
-    tag: f9cf31cf51a1794b4c359dfa9aa7a6fe8a8f4c71
+    tag: 0.0.2
   # quota in GB
   hardQuota: "10"
 
