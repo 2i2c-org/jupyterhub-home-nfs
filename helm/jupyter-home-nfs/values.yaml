@@ -8,7 +8,7 @@ quotaEnforcer:
     repository: ghcr.io/sunu/get-quota-your-home
     tag: f9cf31cf51a1794b4c359dfa9aa7a6fe8a8f4c71
   # quota in GB
-  hardQuota: "0.001"
+  hardQuota: "10"
 
 persistentVolume:
   size: 10Gi
