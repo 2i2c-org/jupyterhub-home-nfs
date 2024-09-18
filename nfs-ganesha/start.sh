@@ -24,8 +24,7 @@ init_dbus
 
 echo "Starting Ganesha NFS"
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib
-# Ensure the Ganesha directories exist and have correct permissions
+# Ensure the Ganesha directories exist
 mkdir -p /var/run/ganesha /var/lib/nfs/ganesha /export
-# chown -R nobody:nogroup /var/run/ganesha /var/lib/nfs/ganesha /etc/ganesha /export
 # Start Ganesha with debugging enabled
 exec /usr/bin/ganesha.nfsd -F -L /dev/stdout -f /etc/ganesha/ganesha.conf -N NIV_EVENT
