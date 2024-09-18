@@ -29,7 +29,7 @@ spec:
           mountPath: /export
       - name: enforce-xfs-quota
         image: "{{ .Values.quotaEnforcer.image.repository }}:{{ .Values.quotaEnforcer.image.tag }}"
-        command: ["/usr/local/bin/generate.py", "/export", "--hard-quota", "{{ .Values.quotaEnforcer.hardQuota }}"]
+        command: ["/usr/local/bin/generate.py", "{{ .Values.quotaEnforcer.path }}", "--hard-quota", "{{ .Values.quotaEnforcer.hardQuota }}"]
         securityContext:
           privileged: true
         volumeMounts:
