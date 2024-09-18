@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: {{ .Release.Name }}-home-directories-volume
+  name: {{ .Release.Name }}-nfs-home-directories-volume
 spec:
   capacity:
     storage: {{ .Values.persistentVolume.size }}

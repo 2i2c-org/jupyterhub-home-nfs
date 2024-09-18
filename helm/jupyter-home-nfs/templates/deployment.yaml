@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-deployment
+  name: {{ .Release.Name }}-nfs-deployment
 spec:
   replicas: 1
   selector:
@@ -38,4 +38,4 @@ spec:
       volumes:
       - name: home-directories
         persistentVolumeClaim:
-          claimName: {{ .Release.Name }}-home-directories-claim
+          claimName: {{ .Release.Name }}-nfs-home-directories-claim

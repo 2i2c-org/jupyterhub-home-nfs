@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .Release.Name }}-home-directories-claim
+  name: {{ .Release.Name }}-nfs-home-directories-claim
 spec:
   accessModes:
     {{- toYaml .Values.persistentVolume.accessModes | nindent 4 }}
@@ -11,5 +11,5 @@ spec:
       storage: {{ .Values.persistentVolume.size }}
   storageClassName: ""
   {{- if or .Values.eks.enabled .Values.gke.enabled }}
-  volumeName: {{ .Release.Name }}-home-directories-volume
+  volumeName: {{ .Release.Name }}-nfs-home-directories-volume
   {{- end }}

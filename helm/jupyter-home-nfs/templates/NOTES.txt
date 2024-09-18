@@ -8,4 +8,4 @@ Using dynamic provisioning.
 {{- end }}
 
 Your NFS server is now available inside the cluster at the following address:
-{{ .Release.Name }}-service.{{ .Release.Namespace }}.svc.cluster.local
+{{ .Release.Name }}-nfs-service.{{ .Release.Namespace }}.svc.cluster.local
