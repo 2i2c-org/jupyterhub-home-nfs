@@ -44,12 +44,12 @@ jobs:
 
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=VERSION::$(cat helm/jupyter-home-nfs/Chart.yaml | grep version | awk '{print $2}')
+      run: echo ::set-output name=VERSION::$(cat helm/jupyterhub-home-nfs/Chart.yaml | grep version | awk '{print $2}')
 
     - name: Package Helm Chart
       run: |
-        helm package helm/jupyter-home-nfs -d .helm-charts
+        helm package helm/jupyterhub-home-nfs -d .helm-charts
 
     - name: Push Helm Chart
       run: |
-        helm push .helm-charts/jupyter-home-nfs-${{ steps.get_version.outputs.VERSION }}.tgz oci://ghcr.io/sunu/jupyter-home-nfs
+        helm push .helm-charts/jupyterhub-home-nfs-${{ steps.get_version.outputs.VERSION }}.tgz oci://ghcr.io/2i2c-org/jupyterhub-home-nfs
