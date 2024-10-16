@@ -1,9 +1,9 @@
 charts:
-  - name: jupyter-home-nfs
-    chartPath: helm/jupyter-home-nfs
-    imagePrefix: ghcr.io/sunu/
+  - name: jupyterhub-home-nfs
+    chartPath: helm/jupyterhub-home-nfs
+    imagePrefix: ghcr.io/2i2c-org/
     repo:
-      git: sunu/jupyter-home-nfs
+      git: 2i2c-org/jupyterhub-home-nfs
     images:
       get-quota-your-home:
         valuesPath: quotaEnforcer.image
