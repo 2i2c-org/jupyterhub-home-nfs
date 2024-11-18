@@ -11,6 +11,11 @@ spec:
     metadata:
       labels:
         app: nfs-server
+      annotations:
+        {{- if .Values.prometheusExporter.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        {{- end }}
     spec:
       containers:
       - name: nfs-server
@@ -35,6 +40,22 @@ spec:
         volumeMounts:
         - name: home-directories
           mountPath: /export
+      {{- if .Values.prometheusExporter.enabled }}
+      - name: metrics-exporter
+        image: "{{ .Values.prometheusExporter.image.repository }}:{{ .Values.prometheusExporter.image.tag }}"
+        args:
+        - --collector.disable-defaults
+        - --path.rootfs=/export
+        - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+        - --collector.filesystem
+        ports:
+        - name: metrics
+          containerPort: 9100
+        volumeMounts:
+        - name: home-directories
+          mountPath: /export
+          readOnly: true
+      {{- end }}
       volumes:
       - name: home-directories
         persistentVolumeClaim:

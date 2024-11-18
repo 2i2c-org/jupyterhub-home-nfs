@@ -1,7 +1,13 @@
+# NFS Ganesha configuration
+# NFS Ganesha is the user space NFS server that we use to serve the home directories
+
 nfsServer:
   image:
     repository: ghcr.io/2i2c-org/nfs-ganesha
     tag: 0.0.6
+
+# Quota enforcer configuration
+# This container enforces the quota on the home directories
 
 quotaEnforcer:
   image:
@@ -11,7 +17,20 @@ quotaEnforcer:
   # quota in GB
   hardQuota: "10"
 
+# Prometheus exporter configuration
+# We export disk usage metrics using the Prometheus node exporter
+
+prometheusExporter:
+  enabled: true
+  image:
+    repository: quay.io/prometheus/node-exporter
+    tag: v1.8.2
+
+# Persistent volume configuration
+
 persistentVolume:
+  # The size should match the pre-provisioned disk size
+  # The pre-provisioned disk ID is specified below in the cloud provider specific configuration
   size: 10Gi
   storageClass: ""
   accessModes:
