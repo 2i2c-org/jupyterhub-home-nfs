@@ -11,6 +11,15 @@ spec:
     metadata:
       labels:
         app: nfs-server
+        # The component label is used by the shared volume free space panel
+        # in jupyterhub/grafana-dashboards
+        # https://github.com/jupyterhub/grafana-dashboards/blob/18ba92d98cd297951673850a4c92507479ec4ca2/dashboards/jupyterhub.jsonnet#L322
+        component: shared-volume-metrics
+      annotations:
+        {{- if .Values.prometheusExporter.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        {{- end }}
     spec:
       containers:
       - name: nfs-server
@@ -35,6 +44,24 @@ spec:
         volumeMounts:
         - name: home-directories
           mountPath: /export
+      {{- if .Values.prometheusExporter.enabled }}
+      - name: metrics-exporter
+        image: "{{ .Values.prometheusExporter.image.repository }}:{{ .Values.prometheusExporter.image.tag }}"
+        args:
+        # Disable default collectors; we only want filesystem metrics
+        - --collector.disable-defaults
+        - --collector.filesystem
+        # Exclude some patterns of mount points to avoid collecting unnecessary metrics
+        - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|etc|var/run/.+|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+        ports:
+        - name: metrics
+          containerPort: 9100
+        volumeMounts:
+        - name: home-directories
+          # Mounting under /shared-volume to match path in dashboard definition in jupyterhub/grafana-dashboards
+          mountPath: /shared-volume
+          readOnly: true
+      {{- end }}
       volumes:
       - name: home-directories
         persistentVolumeClaim:
