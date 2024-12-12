@@ -25,7 +25,7 @@ def test_reconcile_projids():
             for s in homedirs:
                 os.mkdir(os.path.join(base_dir, s))
 
-            reconcile_projfiles([base_dir], projects_file.name, projid_file.name, 1000)
+            reconcile_projfiles([base_dir], projects_file.name, projid_file.name, 1000, [])
 
             projects_file.flush()
             projid_file.flush()
