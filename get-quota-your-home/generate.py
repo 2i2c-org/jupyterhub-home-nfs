@@ -107,6 +107,7 @@ def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid,
             if ent.name not in exclude_dirs and  ent.is_dir():
                 homedirs.append(ent.path)
 
+    homedirs.sort()
     print(homedirs)
 
     # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
