@@ -36,6 +36,13 @@ spec:
         volumeMounts:
         - name: home-directories
           mountPath: /export
+        resources:
+          requests:
+            cpu: {{ .Values.nfsServer.cpu.request | default null }}
+            memory: {{ .Values.nfsServer.memory.request | default null }}
+          limits:
+            cpu: {{ .Values.nfsServer.cpu.limit | default null }}
+            memory: {{ .Values.nfsServer.memory.limit | default null }}
       - name: enforce-xfs-quota
         image: "{{ .Values.quotaEnforcer.image.repository }}:{{ .Values.quotaEnforcer.image.tag }}"
         command: ["/usr/local/bin/generate.py", "{{ .Values.quotaEnforcer.path }}", "--hard-quota", "{{ .Values.quotaEnforcer.hardQuota }}"]
@@ -44,6 +51,13 @@ spec:
         volumeMounts:
         - name: home-directories
           mountPath: /export
+        resources:
+          requests:
+            cpu: {{ .Values.quotaEnforcer.cpu.request | default null }}
+            memory: {{ .Values.quotaEnforcer.memory.request | default null }}
+          limits:
+            cpu: {{ .Values.quotaEnforcer.cpu.limit | default null }}
+            memory: {{ .Values.quotaEnforcer.memory.limit | default null }}
       {{- if .Values.prometheusExporter.enabled }}
       - name: metrics-exporter
         image: "{{ .Values.prometheusExporter.image.repository }}:{{ .Values.prometheusExporter.image.tag }}"
@@ -61,6 +75,13 @@ spec:
           # Mounting under /shared-volume to match path in dashboard definition in jupyterhub/grafana-dashboards
           mountPath: /shared-volume
           readOnly: true
+        resources:
+          requests:
+            cpu: {{ .Values.prometheusExporter.cpu.request | default null }}
+            memory: {{ .Values.prometheusExporter.memory.request | default null }}
+          limits:
+            cpu: {{ .Values.prometheusExporter.cpu.limit | default null }}
+            memory: {{ .Values.prometheusExporter.memory.limit | default null }}
       {{- end }}
       volumes:
       - name: home-directories
