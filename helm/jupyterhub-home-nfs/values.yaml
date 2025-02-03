@@ -5,6 +5,7 @@ nfsServer:
   image:
     repository: ghcr.io/2i2c-org/nfs-ganesha
     tag: 0.0.7
+  resources: {}
 
 # Quota enforcer configuration
 # This container enforces the quota on the home directories
@@ -16,6 +17,7 @@ quotaEnforcer:
   path: "/export"
   # quota in GB
   hardQuota: "10"
+  resources: {}
 
 # Prometheus exporter configuration
 # We export disk usage metrics using the Prometheus node exporter
@@ -25,6 +27,7 @@ prometheusExporter:
   image:
     repository: quay.io/prometheus/node-exporter
     tag: v1.8.2
+  resources: {}
 
 # Persistent volume configuration
 

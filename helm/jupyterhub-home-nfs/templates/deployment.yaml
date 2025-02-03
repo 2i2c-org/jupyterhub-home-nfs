@@ -36,6 +36,7 @@ spec:
         volumeMounts:
         - name: home-directories
           mountPath: /export
+        resources: {{ toJson .Values.nfsServer.resources }}
       - name: enforce-xfs-quota
         image: "{{ .Values.quotaEnforcer.image.repository }}:{{ .Values.quotaEnforcer.image.tag }}"
         command: ["/usr/local/bin/generate.py", "{{ .Values.quotaEnforcer.path }}", "--hard-quota", "{{ .Values.quotaEnforcer.hardQuota }}"]
@@ -44,6 +45,8 @@ spec:
         volumeMounts:
         - name: home-directories
           mountPath: /export
+        resources:
+          requests: {{ toJson .Values.quotaEnforcer.resources }}
       {{- if .Values.prometheusExporter.enabled }}
       - name: metrics-exporter
         image: "{{ .Values.prometheusExporter.image.repository }}:{{ .Values.prometheusExporter.image.tag }}"
@@ -61,6 +64,7 @@ spec:
           # Mounting under /shared-volume to match path in dashboard definition in jupyterhub/grafana-dashboards
           mountPath: /shared-volume
           readOnly: true
+        resources: {{ toJson .Values.prometheusExporter.resources }}
       {{- end }}
       volumes:
       - name: home-directories
