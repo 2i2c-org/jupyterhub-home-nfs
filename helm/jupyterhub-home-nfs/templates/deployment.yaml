@@ -45,8 +45,7 @@ spec:
         volumeMounts:
         - name: home-directories
           mountPath: /export
-        resources:
-          requests: {{ toJson .Values.quotaEnforcer.resources }}
+        resources: {{ toJson .Values.quotaEnforcer.resources }}
       {{- if .Values.prometheusExporter.enabled }}
       - name: metrics-exporter
         image: "{{ .Values.prometheusExporter.image.repository }}:{{ .Values.prometheusExporter.image.tag }}"
