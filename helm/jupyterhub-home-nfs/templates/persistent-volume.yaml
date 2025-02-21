@@ -25,7 +25,7 @@ spec:
   csi:
     driver: cinder.csi.openstack.org
     fsType: xfs
-    volumeHandle: {{ .Values.gke.volumeId }}
+    volumeHandle: {{ .Values.openstack.volumeId }}
   {{- end }}
   mountOptions:
     - rw
