@@ -51,3 +51,8 @@ eks:
 gke:
   enabled: false
   volumeId: "your-gke-volume-id"
+
+
+openstack:
+  enabled: false
+  volumeId: "your-openstack-volume-id"

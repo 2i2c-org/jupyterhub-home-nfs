@@ -1,4 +1,4 @@
-{{- if or .Values.eks.enabled .Values.gke.enabled -}}
+{{- if or .Values.eks.enabled .Values.gke.enabled .Values.openstack.enabled -}}
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -19,6 +19,11 @@ spec:
   {{- else if .Values.gke.enabled }}
   csi:
     driver: pd.csi.storage.gke.io
+    fsType: xfs
+    volumeHandle: {{ .Values.gke.volumeId }}
+  {{- else if .Values.openstack.enabled }}
+  csi:
+    driver: cinder.csi.openstack.org
     fsType: xfs
     volumeHandle: {{ .Values.gke.volumeId }}
   {{- end }}
