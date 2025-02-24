@@ -1,3 +1,3 @@
 # JupyterHub Home NFS
 
-XFS Quota maintainer for home directories
+XFS Quota maintainer for JupyterHub home directories
