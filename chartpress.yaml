@@ -7,8 +7,8 @@ charts:
     images:
       jupyterhub-home-nfs:
         valuesPath: quotaEnforcer.image
-        contextPath: ./jupyterhub_home_nfs
-        dockerfilePath: ./jupyterhub_home_nfs/Dockerfile
+        contextPath: .
+        dockerfilePath: ./Dockerfile
       nfs-ganesha:
         valuesPath: nfsServer.image
         contextPath: ./nfs-ganesha
