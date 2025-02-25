@@ -92,7 +92,9 @@ def get_quotas():
     return quotas
 
 
-def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid, exclude_dirs):
+def reconcile_projfiles(
+    paths, projects_file_path, projid_file_path, min_projid, exclude_dirs
+):
     """
     Make sure each homedir in paths has an appropriate projid entry.
 
@@ -104,7 +106,7 @@ def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid,
     homedirs = []
     for path in paths:
         for ent in os.scandir(path):
-            if ent.name not in exclude_dirs and  ent.is_dir():
+            if ent.name not in exclude_dirs and ent.is_dir():
                 homedirs.append(ent.path)
 
     homedirs.sort()
@@ -224,8 +226,9 @@ def main():
     )
     argparser.add_argument(
         "--exclude",
-        action='append',
-        help='List of directory names to exclude setting quotas on'
+        action="append",
+        default=[],
+        help="List of directory names to exclude setting quotas on",
     )
     args = argparser.parse_args()
 
@@ -236,7 +239,11 @@ def main():
 
     while True:
         reconcile_projfiles(
-            args.paths, args.projects_file, args.projid_file, args.min_projid, args.exclude
+            args.paths,
+            args.projects_file,
+            args.projid_file,
+            args.min_projid,
+            args.exclude,
         )
         reconcile_quotas(args.projid_file, hard_quota_kb)
         time.sleep(args.wait_time)
