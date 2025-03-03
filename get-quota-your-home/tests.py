@@ -1,9 +1,11 @@
 import os
-import tempfile
-from generate import reconcile_projfiles, OWNERSHIP_PREAMBLE, reconcile_quotas
-import subprocess
 from pprint import pprint
+import subprocess
+import tempfile
 
+import pytest
+
+from generate import OWNERSHIP_PREAMBLE, reconcile_projfiles, reconcile_quotas
 
 # This is the mount point defined in mount-xfs.sh
 # It is named docker-test-xfs to avoid conflicts with the host's mount point
@@ -12,7 +14,8 @@ from pprint import pprint
 MOUNT_POINT = "/mnt/docker-test-xfs"
 
 
-def test_access():
+@pytest.fixture(autouse=True)
+def check_mount_point():
     """Make sure we are ruuning in docker and have write access to the mount point"""
     # Make sure we have write access to /mnt/docker-test-xfs
     assert os.access(
