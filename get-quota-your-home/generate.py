@@ -194,7 +194,10 @@ def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs):
                     ["xfs_quota", "-x", "-c", f"project -s {project}", mountpoint]
                 )
                 print(f"Setting up xfs_quota project for {project}")
-            if project not in quotas or quotas[project]["hard"] != intended_quotas[project]:
+            if (
+                project not in quotas
+                or quotas[project]["hard"] != intended_quotas[project]
+            ):
                 subprocess.check_call(
                     [
                         "xfs_quota",
@@ -204,7 +207,9 @@ def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs):
                         mountpoint,
                     ]
                 )
-                print(f"Setting limit for project {project} to {intended_quotas[project]}k")
+                print(
+                    f"Setting limit for project {project} to {intended_quotas[project]}k"
+                )
 
 
 def main():
