@@ -92,7 +92,9 @@ def get_quotas():
     return quotas
 
 
-def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid):
+def reconcile_projfiles(
+    paths, projects_file_path, projid_file_path, min_projid, exclude_dirs
+):
     """
     Make sure each homedir in paths has an appropriate projid entry.
 
@@ -101,9 +103,13 @@ def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid)
     """
     # Fetch existing home directories
     # Sort to provide consistent ordering across runs
-    homedirs = sorted(
-        [ent.path for path in paths for ent in os.scandir(path) if ent.is_dir()]
-    )
+    homedirs = []
+    for path in paths:
+        for ent in os.scandir(path):
+            if ent.name not in exclude_dirs and ent.is_dir():
+                homedirs.append(ent.path)
+
+    homedirs.sort()
     print(homedirs)
 
     # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
@@ -218,6 +224,12 @@ def main():
         type=float,
         help="Hard quota limit (in GB) to set for all home directories",
     )
+    argparser.add_argument(
+        "--exclude",
+        action="append",
+        default=[],
+        help="List of directory names to exclude setting quotas on",
+    )
     args = argparser.parse_args()
 
     # xfs_quota reports in kb
@@ -227,7 +239,11 @@ def main():
 
     while True:
         reconcile_projfiles(
-            args.paths, args.projects_file, args.projid_file, args.min_projid
+            args.paths,
+            args.projects_file,
+            args.projid_file,
+            args.min_projid,
+            args.exclude,
         )
         reconcile_quotas(args.projid_file, hard_quota_kb)
         time.sleep(args.wait_time)
