@@ -18,6 +18,6 @@ services:
     privileged: true
     volumes:
       - .:/app
-    command: sh -c "/usr/local/bin/mount-xfs.sh && python3 -m pytest /app/tests.py"
+    command: sh -c "/usr/local/bin/mount-xfs.sh && python3 -m pytest -v /app/tests.py"
     environment:
       - PYTHONPATH=/app
