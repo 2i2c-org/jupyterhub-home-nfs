@@ -10,10 +10,10 @@ RUN apt-get update > /dev/null && \
     apt-get install --yes python3-pytest > /dev/null && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY scripts/mount-xfs.sh /usr/local/bin/mount-xfs.sh
+COPY dev-scripts/mount-xfs.sh /usr/local/bin/mount-xfs.sh
 RUN chmod +x /usr/local/bin/mount-xfs.sh
 
-COPY scripts/start.sh /usr/local/bin/start.sh
+COPY dev-scripts/start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
 
 COPY generate.py /usr/local/bin/generate.py
