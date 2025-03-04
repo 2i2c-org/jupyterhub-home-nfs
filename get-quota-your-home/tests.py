@@ -77,7 +77,7 @@ def test_reconcile_projids():
 
 def test_exclude_dirs():
     """
-    Test that we can exclude dirs from quota reconciliation
+    Test that we can exclude dirs from quota enforcement
     """
     homedirs = {"a": 1001, "b": 1002, "c": 1003}
     exclude_dirs = ["a"]
@@ -161,3 +161,19 @@ def test_exclude_dirs():
         assert (
             a_line.split()[3] == "0"
         ), f"Expected quota of 0 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
+
+        # Create a 2MB test file using a temporary file
+        with tempfile.NamedTemporaryFile() as test_file:
+            test_file.write(b"0" * 2 * 1024 * 1024)
+            test_file.flush()
+
+            # copy the file to /mnt/docker-test-xfs/b and ensure it fails
+            with pytest.raises(subprocess.CalledProcessError):
+                subprocess.check_output(
+                    ["cp", test_file.name, os.path.join(MOUNT_POINT, "b", "2MB.bin")]
+                )
+
+            # copy the file to /mnt/docker-test-xfs/a that is excluded from quota and ensure it succeeds
+            subprocess.check_output(
+                ["cp", test_file.name, os.path.join(MOUNT_POINT, "a", "2MB.bin")]
+            )
