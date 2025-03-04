@@ -106,7 +106,7 @@ def reconcile_projfiles(
     homedirs = []
     for path in paths:
         for ent in os.scandir(path):
-            if ent.name not in exclude_dirs and ent.is_dir():
+            if ent.is_dir():
                 homedirs.append(ent.path)
 
     homedirs.sort()
@@ -161,7 +161,7 @@ def initialize_projects(projid_file_path):
         print(f"Setting up xfs_quota project for {project}")
 
 
-def reconcile_quotas(projid_file_path, hard_quota_kb):
+def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs):
     """
     Make sure each project in /etc/projid has correct hard quota set
     """
@@ -171,9 +171,18 @@ def reconcile_quotas(projid_file_path, hard_quota_kb):
     # Fetch quota information from xfs_quota
     quotas = get_quotas()
 
+    # If exclude_dirs is provided, set quotas to 0 for those projects,
+    # otherwise set the intended quota to hard_quota_kb
+    intended_quotas = {
+        project: (hard_quota_kb if os.path.basename(project) not in exclude_dirs else 0)
+        for project in projects
+    }
+
+    print(f"Intended quotas: {intended_quotas}")
+
     # Check for projects that don't have any nor correct quota
     changed_projects = [
-        p for p in projects if quotas.get(p, {}).get("hard") != hard_quota_kb
+        p for p in projects if quotas.get(p, {}).get("hard") != intended_quotas[p]
     ]
 
     # Make sure xfs_quotas is in sync
@@ -185,17 +194,22 @@ def reconcile_quotas(projid_file_path, hard_quota_kb):
                     ["xfs_quota", "-x", "-c", f"project -s {project}", mountpoint]
                 )
                 print(f"Setting up xfs_quota project for {project}")
-            if project not in quotas or quotas[project]["hard"] != hard_quota_kb:
+            if (
+                project not in quotas
+                or quotas[project]["hard"] != intended_quotas[project]
+            ):
                 subprocess.check_call(
                     [
                         "xfs_quota",
                         "-x",
                         "-c",
-                        f"limit -p bhard={hard_quota_kb}k {project}",
+                        f"limit -p bhard={intended_quotas[project]}k {project}",
                         mountpoint,
                     ]
                 )
-                print(f"Setting limit for project {project} to {hard_quota_kb}k")
+                print(
+                    f"Setting limit for project {project} to {intended_quotas[project]}k"
+                )
 
 
 def main():
@@ -245,7 +259,7 @@ def main():
             args.min_projid,
             args.exclude,
         )
-        reconcile_quotas(args.projid_file, hard_quota_kb)
+        reconcile_quotas(args.projid_file, hard_quota_kb, args.exclude)
         time.sleep(args.wait_time)
 
 
