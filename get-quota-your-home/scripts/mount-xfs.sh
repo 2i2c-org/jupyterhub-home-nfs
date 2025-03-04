@@ -8,14 +8,14 @@ BACKING_FILE="/tmp/xfs.${FILE_SIZE}"
 # Create the mount point
 mkdir -p ${MOUNT_POINT}
 
+# Delete the backing file if it exists
+rm -f ${BACKING_FILE}
+
 # Create the backing file
 dd if=/dev/zero of=${BACKING_FILE} bs=1 count=0 seek=${FILE_SIZE}
 
-# Check if the file is already formatted to xfs
-if ! blkid ${BACKING_FILE} | grep -q "TYPE=\"xfs\""; then
-    # Format the file to xfs
-    mkfs -t xfs -q ${BACKING_FILE}
-fi
+# Format the file to xfs
+mkfs -t xfs -q ${BACKING_FILE}
 
 # Mount the file to the mount point; use pquota to enable project quotas
 mount -o loop,rw ${BACKING_FILE} -o pquota ${MOUNT_POINT}
