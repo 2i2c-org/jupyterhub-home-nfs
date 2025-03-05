@@ -18,6 +18,7 @@ quotaEnforcer:
   # quota in GB
   hardQuota: "10"
   resources: {}
+  exclude: []
 
 # Prometheus exporter configuration
 # We export disk usage metrics using the Prometheus node exporter
@@ -51,3 +52,7 @@ eks:
 gke:
   enabled: false
   volumeId: "your-gke-volume-id"
+
+openstack:
+  enabled: false
+  volumeId: "your-openstack-volume-id"

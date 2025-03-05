@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     install_requires=[],
     description="A package for managing storage quotas for JupyterHub home directories",
-    long_description=open("jupyterhub_home_nfs/README.md").read(),
+    long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/2i2c-org/jupyterhub-home-nfs",
     classifiers=[

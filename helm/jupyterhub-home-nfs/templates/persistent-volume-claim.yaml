@@ -10,6 +10,6 @@ spec:
     requests:
       storage: {{ .Values.persistentVolume.size }}
   storageClassName: ""
-  {{- if or .Values.eks.enabled .Values.gke.enabled }}
+  {{- if or .Values.eks.enabled .Values.gke.enabled .Values.openstack.enabled}}
   volumeName: {{ .Release.Name }}-nfs-home-directories-volume
   {{- end }}
