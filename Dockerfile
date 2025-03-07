@@ -11,9 +11,8 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 COPY ./setup.py /opt/jupyterhub-home-nfs/setup.py
 COPY ./README.md /opt/jupyterhub-home-nfs/README.md
-COPY ./jupyterhub_home_nfs /opt/jupyterhub-home-nfs/jupyterhub_home_nfs
+
 WORKDIR /opt/jupyterhub-home-nfs
-RUN pip install -e .
 
 # Development stage
 FROM base AS dev
@@ -26,9 +25,17 @@ RUN chmod +x /usr/local/bin/start.sh
 
 RUN pip install pytest
 
+COPY ./jupyterhub_home_nfs /opt/jupyterhub-home-nfs/jupyterhub_home_nfs
+
+RUN pip install -e .
+
 CMD ["/usr/local/bin/start.sh"]
 
 # Production stage
 FROM base AS prod
+
+COPY ./jupyterhub_home_nfs /opt/jupyterhub-home-nfs/jupyterhub_home_nfs
+
+RUN pip install -e .
 
 CMD ["python", "-m", "jupyterhub_home_nfs.generate"]
