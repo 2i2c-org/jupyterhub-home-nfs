@@ -1,6 +1,6 @@
-# Jupyter Home NFS
+# JupyterHub Home NFS
 
-An NFS server for JupyterHub that runs within your Kubernetes cluster to provide persistent storage for users and enforce storage quotas.
+An NFS server for JupyterHub that runs within your Kubernetes cluster to provide persistent storage for users and a Python module to enforce storage quotas.
 
 ## Key Components
 - [NFS Ganesha](https://github.com/nfs-ganesha/nfs-ganesha) is used as the NFS server
