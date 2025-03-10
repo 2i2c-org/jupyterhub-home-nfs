@@ -33,8 +33,9 @@ import sys
 import os
 import time
 import subprocess
-import argparse
-import itertools
+
+from traitlets.config import Application
+from traitlets import List, Unicode, Int, Float
 
 # Line at beginning of projid / projects file stating ownership
 OWNERSHIP_PREAMBLE = (
@@ -92,9 +93,7 @@ def get_quotas():
     return quotas
 
 
-def reconcile_projfiles(
-    paths, projects_file_path, projid_file_path, min_projid, exclude_dirs
-):
+def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid):
     """
     Make sure each homedir in paths has an appropriate projid entry.
 
@@ -110,11 +109,11 @@ def reconcile_projfiles(
                 homedirs.append(ent.path)
 
     homedirs.sort()
-    print(homedirs)
+    print(f"homedirs: {homedirs}")
 
     # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
     projects = parse_projids(projid_file_path)
-    print(projects)
+    print(f"projects: {projects}")
 
     # We have to write /etc/projid & /etc/projects if they aren't completely in sync
     projid_file_dirty = sorted(list(projects.keys())) != sorted(homedirs)
@@ -145,7 +144,9 @@ def reconcile_projfiles(
                 projid_file.write(f"{path}:{id}\n")
                 projects_file.write(f"{id}:{path}\n")
 
-        print(f"Writing /etc/projid and /etc/projects")
+        print(
+            f"Writing projid to {projid_file_path} and projects to {projects_file_path}"
+        )
 
 
 def initialize_projects(projid_file_path):
@@ -170,6 +171,7 @@ def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs):
     projects = parse_projids(projid_file_path)
     # Fetch quota information from xfs_quota
     quotas = get_quotas()
+    print(f"Quotas: {quotas}")
 
     # If exclude_dirs is provided, set quotas to 0 for those projects,
     # otherwise set the intended quota to hard_quota_kb
@@ -212,55 +214,91 @@ def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs):
                 )
 
 
-def main():
+class QuotaManager(Application):
+    # Config file can be loaded from this location
+    config_file = Unicode("", help="The config file to load").tag(config=True)
 
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument(
-        "paths", nargs="+", help="Paths to scan for home directories"
+    # Define all configuration parameters as traitlets
+    paths = List(
+        Unicode(), default_value=[], help="Paths to scan for home directories"
+    ).tag(config=True)
+
+    projects_file = Unicode(
+        default_value="/etc/projects", help="Path to projects file"
+    ).tag(config=True)
+
+    projid_file = Unicode(default_value="/etc/projid", help="Path to projid file").tag(
+        config=True
     )
-    argparser.add_argument("--projects-file", default="/etc/projects")
-    argparser.add_argument("--projid-file", default="/etc/projid")
-    argparser.add_argument(
-        "--min-projid",
-        default=1000,
-        type=int,
+
+    min_projid = Int(
+        default_value=1000,
         help="Project IDs will be generated starting from this number",
-    )
-    argparser.add_argument(
-        "--wait-time",
-        default=30,
-        type=int,
-        help="Number of seconds to wait between runs",
-    )
-    argparser.add_argument(
-        "--hard-quota",
-        default=10,
-        type=float,
+    ).tag(config=True)
+
+    wait_time = Int(
+        default_value=30, help="Number of seconds to wait between runs"
+    ).tag(config=True)
+
+    hard_quota = Float(
+        default_value=10.0,
         help="Hard quota limit (in GB) to set for all home directories",
-    )
-    argparser.add_argument(
-        "--exclude",
-        action="append",
-        default=[],
+    ).tag(config=True)
+
+    exclude = List(
+        Unicode(),
+        default_value=[],
         help="List of directory names to exclude setting quotas on",
-    )
-    args = argparser.parse_args()
+    ).tag(config=True)
 
-    # xfs_quota reports in kb
-    hard_quota_kb = int(args.hard_quota * 1024 * 1024)
+    aliases = {
+        "config-file": "QuotaManager.config_file",
+        "paths": "QuotaManager.paths",
+        "projects-file": "QuotaManager.projects_file",
+        "projid-file": "QuotaManager.projid_file",
+        "min-projid": "QuotaManager.min_projid",
+        "wait-time": "QuotaManager.wait_time",
+        "hard-quota": "QuotaManager.hard_quota",
+    }
 
-    initialize_projects(args.projid_file)
+    def initialize(self, argv=None):
+        self.parse_command_line(argv)
+        if self.config_file:
+            self.load_config_file(self.config_file)
+        self.load_config_environ()
+        if not self.paths:
+            self.log.error("No paths specified!")
+            sys.exit(1)
 
-    while True:
+    def _initialize_projects(self):
+        initialize_projects(self.projid_file)
+
+    def _reconcile_projfiles(self):
         reconcile_projfiles(
-            args.paths,
-            args.projects_file,
-            args.projid_file,
-            args.min_projid,
-            args.exclude,
+            self.paths,
+            self.projects_file,
+            self.projid_file,
+            self.min_projid,
         )
-        reconcile_quotas(args.projid_file, hard_quota_kb, args.exclude)
-        time.sleep(args.wait_time)
+
+    def _reconcile_quotas(self):
+        # Convert GB to KB for xfs_quota
+        hard_quota_kb = int(self.hard_quota * 1024 * 1024)
+        reconcile_quotas(
+            self.projid_file, hard_quota_kb=hard_quota_kb, exclude_dirs=self.exclude
+        )
+
+    def start(self):
+        self._initialize_projects()
+
+        while True:
+            self._reconcile_projfiles()
+            self._reconcile_quotas()
+            time.sleep(self.wait_time)
+
+
+def main():
+    QuotaManager.launch_instance()
 
 
 if __name__ == "__main__":

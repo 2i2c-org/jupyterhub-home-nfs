@@ -4,7 +4,9 @@ setup(
     name="jupyterhub_home_nfs",
     version="0.0.9",
     packages=find_packages(),
-    install_requires=[],
+    install_requires=[
+        "traitlets>=5.13.0",
+    ],
     description="A package for managing storage quotas for JupyterHub home directories",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

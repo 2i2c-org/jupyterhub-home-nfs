@@ -1,7 +1,8 @@
 import os
-from pprint import pprint
+from pprint import pprint  # noqa: F401
 import subprocess
 import tempfile
+import textwrap
 
 import pytest
 
@@ -9,6 +10,7 @@ from jupyterhub_home_nfs.generate import (
     reconcile_projfiles,
     OWNERSHIP_PREAMBLE,
     reconcile_quotas,
+    QuotaManager,
 )
 
 
@@ -26,6 +28,31 @@ def check_mount_point():
     assert os.access(
         MOUNT_POINT, os.W_OK
     ), f"This test must be run with write access to {MOUNT_POINT}"
+
+
+def _reset_quotas(base_dir, projects_file, projid_file, homedirs):
+    """
+    Given a list of homedirs, reset the quotas by excluding them from the quota enforcement
+    """
+    # clear out the existing homedirs
+    for d in os.listdir(base_dir):
+        # If the directory is not empty, remove 2MB.bin file in it
+        bin_file = os.path.join(base_dir, d, "2MB.bin")
+        if os.path.exists(bin_file):
+            os.remove(bin_file)
+        os.rmdir(os.path.join(base_dir, d))
+
+    # create the homedirs
+    for d in homedirs:
+        os.mkdir(os.path.join(base_dir, d))
+
+    # Empty the projects and projid files
+    projects_file.truncate(0)
+    projid_file.truncate(0)
+
+    # reconcile the projects and projid files
+    reconcile_projfiles([MOUNT_POINT], projects_file.name, projid_file.name, 0)
+    reconcile_quotas(projid_file.name, 0, [])
 
 
 def test_reconcile_projids():
@@ -49,9 +76,7 @@ def test_reconcile_projids():
             for s in homedirs:
                 os.mkdir(os.path.join(base_dir, s))
 
-            reconcile_projfiles(
-                [base_dir], projects_file.name, projid_file.name, 1000, []
-            )
+            reconcile_projfiles([base_dir], projects_file.name, projid_file.name, 1000)
 
             projects_file.flush()
             projid_file.flush()
@@ -94,22 +119,15 @@ def test_exclude_dirs():
     with open(projects_file_path, "w+b") as projects_file, open(
         projid_file_path, "w+b"
     ) as projid_file:
-        for d in os.listdir(base_dir):
-            # using rmdir so we don't accidentally rm -rf things
-            os.rmdir(os.path.join(base_dir, d))
-
-        for s in homedirs:
-            os.mkdir(os.path.join(base_dir, s))
+        _reset_quotas(base_dir, projects_file, projid_file, list(homedirs.keys()))
 
         # First reconcile without any exclusions
-        reconcile_projfiles([base_dir], projects_file.name, projid_file.name, 1000, [])
+        reconcile_projfiles([base_dir], projects_file.name, projid_file.name, 1000)
         reconcile_quotas(projid_file.name, 1000, [])
 
         quota_output = subprocess.check_output(
             ["xfs_quota", "-x", "-c", "report -N -p"]
         ).decode()
-        print("QUOTA OUTPUT:")
-        pprint(quota_output)
         # remove empty lines
         quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
         # We should see 4 lines in the output: 1 for the default project, and 3 for the homedirs a, b, c
@@ -133,9 +151,7 @@ def test_exclude_dirs():
         ), f"Expected quota of 1000 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
 
         # Now reconcile with exclusions
-        reconcile_projfiles(
-            [base_dir], projects_file.name, projid_file.name, 1000, exclude_dirs
-        )
+        reconcile_projfiles([base_dir], projects_file.name, projid_file.name, 1000)
         reconcile_quotas(projid_file.name, 1000, exclude_dirs)
 
         # Now test the output of "xfs_quota -x -c 'report -N -p'"
@@ -144,8 +160,6 @@ def test_exclude_dirs():
         quota_output = subprocess.check_output(
             ["xfs_quota", "-x", "-c", "report -N -p"]
         ).decode()
-        print("QUOTA OUTPUT:")
-        pprint(quota_output)
         quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
         # We should see 4 lines in the output: 1 for the default project, and 3 for the homedirs a, b, c
         assert (
@@ -182,3 +196,77 @@ def test_exclude_dirs():
             subprocess.check_output(
                 ["cp", test_file.name, os.path.join(MOUNT_POINT, "a", "2MB.bin")]
             )
+
+
+def test_config_file():
+    """Test that the traitlets config file is loaded and used correctly"""
+    homedirs = {"a": 1001, "b": 1002, "c": 1003, "d": 1004}
+
+    projects_file_path = "/etc/projects"
+    projid_file_path = "/etc/projid"
+    base_dir = MOUNT_POINT
+
+    with open(projects_file_path, "w+b") as projects_file, open(
+        projid_file_path, "w+b"
+    ) as projid_file:
+        _reset_quotas(base_dir, projects_file, projid_file, list(homedirs.keys()))
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py") as config_file:
+
+            # Write test config
+            config_content = textwrap.dedent(
+                f"""
+                c.QuotaManager.projects_file = "{projects_file.name}"
+                c.QuotaManager.projid_file = "{projid_file.name}"
+                c.QuotaManager.paths = ["{base_dir}"]
+                c.QuotaManager.hard_quota = 0.003 # 3MB
+                c.QuotaManager.exclude = ["c", "d"]
+            """
+            )
+
+            config_file.write(config_content)
+            config_file.flush()
+
+            # Create QuotaManager instance with our config
+            manager = QuotaManager()
+            manager.initialize(["--config-file", config_file.name])
+
+            # Verify config values were loaded correctly
+            assert manager.paths == [base_dir]
+            assert manager.hard_quota == 0.003
+            assert manager.exclude == ["c", "d"]
+            assert manager.projects_file == projects_file.name
+            assert manager.projid_file == projid_file.name
+
+            # Test command line override
+            manager = QuotaManager()
+            manager.initialize(
+                ["--config-file", config_file.name, "--hard-quota=0.001"]
+            )
+            assert manager.hard_quota == 0.001  # Should be overridden by CLI
+            assert manager.paths == [base_dir]  # Should still be from config file
+            assert manager.exclude == ["c", "d"]  # Should still be from config file
+
+            manager._initialize_projects()
+            manager._reconcile_projfiles()
+            manager._reconcile_quotas()
+
+            # check that quota is enforced
+            with tempfile.NamedTemporaryFile() as test_file:
+                test_file.write(b"0" * 2 * 1024 * 1024)
+                test_file.flush()
+
+                # check that the file is too big to copy
+                with pytest.raises(subprocess.CalledProcessError):
+                    subprocess.check_output(
+                        [
+                            "cp",
+                            test_file.name,
+                            os.path.join(MOUNT_POINT, "b", "2MB.bin"),
+                        ]
+                    )
+
+                # check that directory a is excluded from quota
+                subprocess.check_output(
+                    ["cp", test_file.name, os.path.join(MOUNT_POINT, "d", "2MB.bin")]
+                )
