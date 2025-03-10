@@ -6,7 +6,7 @@ services:
       target: dev  # Specify the development stage
     privileged: true  # Needed for mounting XFS
     volumes:
-      - .:/app
+      - ./jupyterhub_home_nfs:/app
     command: /usr/local/bin/start.sh
 
   test:
@@ -17,7 +17,7 @@ services:
       target: dev  # Specify the development stage
     privileged: true
     volumes:
-      - .:/app
+      - ./jupyterhub_home_nfs:/app
     command: sh -c "/usr/local/bin/mount-xfs.sh && python3 -m pytest -v /app/tests.py"
     environment:
       - PYTHONPATH=/app

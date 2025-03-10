@@ -5,10 +5,10 @@ charts:
     repo:
       git: 2i2c-org/jupyterhub-home-nfs
     images:
-      get-quota-your-home:
+      jupyterhub-home-nfs:
         valuesPath: quotaEnforcer.image
-        contextPath: ./get-quota-your-home
-        dockerfilePath: ./get-quota-your-home/Dockerfile
+        contextPath: .
+        dockerfilePath: ./Dockerfile
       nfs-ganesha:
         valuesPath: nfsServer.image
         contextPath: ./nfs-ganesha

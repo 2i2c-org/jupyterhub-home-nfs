@@ -5,7 +5,12 @@ import tempfile
 
 import pytest
 
-from generate import OWNERSHIP_PREAMBLE, reconcile_projfiles, reconcile_quotas
+from jupyterhub_home_nfs.generate import (
+    reconcile_projfiles,
+    OWNERSHIP_PREAMBLE,
+    reconcile_quotas,
+)
+
 
 # This is the mount point defined in mount-xfs.sh
 # It is named docker-test-xfs to avoid conflicts with the host's mount point
