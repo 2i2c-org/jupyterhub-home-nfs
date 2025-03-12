@@ -29,13 +29,13 @@ This is run in a loop, and should provide fairly robust quotaing setup.
 This script *owns* /etc/projects and /etc/projid. If there are entries
 there that aren't put in there by this script, they will be removed!
 """
-import sys
 import os
-import time
 import subprocess
+import sys
+import time
 
+from traitlets import Float, Int, List, Unicode
 from traitlets.config import Application
-from traitlets import List, Unicode, Int, Float
 
 # Line at beginning of projid / projects file stating ownership
 OWNERSHIP_PREAMBLE = (
@@ -135,9 +135,10 @@ def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid)
         projects = {k: v for k, v in projects.items() if k in homedirs}
 
         # FIXME: make this an atomic write
-        with open(projects_file_path, "w") as projects_file, open(
-            projid_file_path, "w"
-        ) as projid_file:
+        with (
+            open(projects_file_path, "w") as projects_file,
+            open(projid_file_path, "w") as projid_file,
+        ):
             projects_file.write(OWNERSHIP_PREAMBLE)
             projid_file.write(OWNERSHIP_PREAMBLE)
             for path, id in projects.items():

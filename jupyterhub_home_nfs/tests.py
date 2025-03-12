@@ -1,18 +1,17 @@
 import os
-from pprint import pprint  # noqa: F401
 import subprocess
 import tempfile
 import textwrap
+from pprint import pprint  # noqa: F401
 
 import pytest
 
 from jupyterhub_home_nfs.generate import (
-    reconcile_projfiles,
     OWNERSHIP_PREAMBLE,
-    reconcile_quotas,
     QuotaManager,
+    reconcile_projfiles,
+    reconcile_quotas,
 )
-
 
 # This is the mount point defined in mount-xfs.sh
 # It is named docker-test-xfs to avoid conflicts with the host's mount point
@@ -66,7 +65,11 @@ def test_reconcile_projids():
         {"a": 1001, "b": 1002, "d": 1004, "c": 1005},
     ]
 
-    with tempfile.NamedTemporaryFile() as projects_file, tempfile.NamedTemporaryFile() as projid_file, tempfile.TemporaryDirectory() as base_dir:
+    with (
+        tempfile.NamedTemporaryFile() as projects_file,
+        tempfile.NamedTemporaryFile() as projid_file,
+        tempfile.TemporaryDirectory() as base_dir,
+    ):
         for homedirs in homedirs_sequence:
 
             for d in os.listdir(base_dir):
@@ -116,9 +119,10 @@ def test_exclude_dirs():
     projid_file_path = "/etc/projid"
     base_dir = MOUNT_POINT
 
-    with open(projects_file_path, "w+b") as projects_file, open(
-        projid_file_path, "w+b"
-    ) as projid_file:
+    with (
+        open(projects_file_path, "w+b") as projects_file,
+        open(projid_file_path, "w+b") as projid_file,
+    ):
         _reset_quotas(base_dir, projects_file, projid_file, list(homedirs.keys()))
 
         # First reconcile without any exclusions
@@ -206,9 +210,10 @@ def test_config_file():
     projid_file_path = "/etc/projid"
     base_dir = MOUNT_POINT
 
-    with open(projects_file_path, "w+b") as projects_file, open(
-        projid_file_path, "w+b"
-    ) as projid_file:
+    with (
+        open(projects_file_path, "w+b") as projects_file,
+        open(projid_file_path, "w+b") as projid_file,
+    ):
         _reset_quotas(base_dir, projects_file, projid_file, list(homedirs.keys()))
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py") as config_file:
