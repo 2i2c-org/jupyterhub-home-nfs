@@ -9,7 +9,7 @@ ENV VIRTUAL_ENV=/opt/venv
 RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-COPY ./setup.py /opt/jupyterhub-home-nfs/setup.py
+COPY ./pyproject.toml /opt/jupyterhub-home-nfs/pyproject.toml
 COPY ./README.md /opt/jupyterhub-home-nfs/README.md
 
 WORKDIR /opt/jupyterhub-home-nfs
