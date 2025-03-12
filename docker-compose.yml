@@ -3,18 +3,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: dev  # Specify the development stage
-    privileged: true  # Needed for mounting XFS
+      target: dev # Specify the development stage
+    privileged: true # Needed for mounting XFS
     volumes:
       - ./jupyterhub_home_nfs:/app
     command: /usr/local/bin/start.sh
 
   test:
-    profiles: ["test"]  # This service will only run when explicitly requested
+    profiles: ["test"] # This service will only run when explicitly requested
     build:
       context: .
       dockerfile: Dockerfile
-      target: dev  # Specify the development stage
+      target: dev # Specify the development stage
     privileged: true
     volumes:
       - ./jupyterhub_home_nfs:/app
