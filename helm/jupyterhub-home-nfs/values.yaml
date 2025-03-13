@@ -12,13 +12,51 @@ nfsServer:
 
 quotaEnforcer:
   image:
-    repository: ghcr.io/2i2c-org/get-quota-your-home
+    repository: ghcr.io/2i2c-org/jupyterhub-home-nfs
     tag: 0.0.7
+  
+  # The entire configuration file content as a multi-line string.
+  # If this is defined, the individual parameters below will be ignored
+  # and we will use the content of this file instead for configuration.
+  # If this is not defined, the individual parameters below will be used
+  # as command-line arguments
+  # 
+  # Example:
+  # config_file: |
+  #   # Configuration file for the quota enforcer
+  #
+  #   # Path to scan for home directories
+  #   c.QuotaManager.paths = ["/export"]
+  #   
+  #   # Hard quota limit in GB
+  #   c.QuotaManager.hard_quota = 10
+  #   
+  #   # Wait time between reconciliation runs in seconds
+  #   c.QuotaManager.wait_time = 30
+  #   
+  #   # Minimum project ID to use
+  #   c.QuotaManager.min_projid = 1000
+  #   
+  #   # Projects file path
+  #   c.QuotaManager.projects_file = "/etc/projects"
+  #   
+  #   # Projid file path
+  #   c.QuotaManager.projid_file = "/etc/projid"
+  #   
+  #   # List of directory names to exclude from quota enforcement
+  #   c.QuotaManager.exclude = []
+  config_file: ""
+
+  # Individual configuration parameters used when config_file is not defined.
+  # These will be used as command-line arguments.
+  # Mostly kept for backward compatibility. Please use config_file instead.
   path: "/export"
   # quota in GB
   hardQuota: "10"
-  resources: {}
   exclude: []
+  # end of individual configuration parameters
+
+  resources: {}
 
 # Prometheus exporter configuration
 # We export disk usage metrics using the Prometheus node exporter

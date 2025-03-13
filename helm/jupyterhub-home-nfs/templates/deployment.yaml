@@ -25,6 +25,10 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
         {{- end }}
+        {{- if .Values.quotaEnforcer.config_file }}
+        # checksum of the config file to trigger a deployment when the config changes
+        checksum/config: {{ .Values.quotaEnforcer.config_file | sha256sum }}
+        {{- end }}
     spec:
       containers:
       - name: nfs-server
@@ -44,16 +48,26 @@ spec:
         resources: {{ toJson .Values.nfsServer.resources }}
       - name: enforce-xfs-quota
         image: "{{ .Values.quotaEnforcer.image.repository }}:{{ .Values.quotaEnforcer.image.tag }}"
-        command: ["/usr/local/bin/generate.py", "{{ .Values.quotaEnforcer.path }}", "--hard-quota", "{{ .Values.quotaEnforcer.hardQuota }}"
+        {{- if .Values.quotaEnforcer.config_file }}
+        command: ["python", "-m", "jupyterhub_home_nfs.generate", "--config-file", "/etc/jupyterhub-home-nfs/quota-enforcer-config.py"]
+        {{- else }}
+        command: ["python", "-m", "jupyterhub_home_nfs.generate",
+          "--paths", "{{ .Values.quotaEnforcer.path }}", 
+          "--hard-quota", "{{ .Values.quotaEnforcer.hardQuota }}"
         {{- range .Values.quotaEnforcer.exclude }}
         , "--exclude", {{ . | quote }}
         {{- end }}
         ]
+        {{- end }}
         securityContext:
           privileged: true
         volumeMounts:
         - name: home-directories
           mountPath: /export
+        {{- if .Values.quotaEnforcer.config_file }}
+        - name: quota-enforcer-config
+          mountPath: /etc/jupyterhub-home-nfs
+        {{- end }}
         resources: {{ toJson .Values.quotaEnforcer.resources }}
       {{- if .Values.prometheusExporter.enabled }}
       - name: metrics-exporter
@@ -78,3 +92,8 @@ spec:
       - name: home-directories
         persistentVolumeClaim:
           claimName: {{ .Release.Name }}-nfs-home-directories-claim
+      {{- if .Values.quotaEnforcer.config_file }}
+      - name: quota-enforcer-config
+        configMap:
+          name: {{ .Release.Name }}-quota-enforcer-config
+      {{- end }}
