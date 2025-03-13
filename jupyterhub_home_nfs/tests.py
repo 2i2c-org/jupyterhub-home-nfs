@@ -51,8 +51,8 @@ def _reset_quotas(base_dir, projects_file, projid_file, homedirs):
     projid_file.truncate(0)
 
     # reconcile the projects and projid files
-    reconcile_projfiles([MOUNT_POINT], projects_file.name, projid_file.name, 0)
-    reconcile_quotas(projid_file.name, 0, [])
+    reconcile_projfiles([MOUNT_POINT], projects_file.name, projid_file.name, 1000)
+    reconcile_quotas(projid_file.name, 1000, [])
 
 
 def test_reconcile_projids():
@@ -66,7 +66,11 @@ def test_reconcile_projids():
         {"a": 1001, "b": 1002, "d": 1004, "c": 1005},
     ]
 
-    with tempfile.NamedTemporaryFile() as projects_file, tempfile.NamedTemporaryFile() as projid_file, tempfile.TemporaryDirectory() as base_dir:
+    with (
+        tempfile.NamedTemporaryFile() as projects_file,
+        tempfile.NamedTemporaryFile() as projid_file,
+        tempfile.TemporaryDirectory() as base_dir,
+    ):
         for homedirs in homedirs_sequence:
 
             for d in os.listdir(base_dir):
@@ -116,14 +120,11 @@ def test_exclude_dirs():
     projid_file_path = "/etc/projid"
     base_dir = MOUNT_POINT
 
-    with open(projects_file_path, "w+b") as projects_file, open(
-        projid_file_path, "w+b"
-    ) as projid_file:
+    with (
+        open(projects_file_path, "w+b") as projects_file,
+        open(projid_file_path, "w+b") as projid_file,
+    ):
         _reset_quotas(base_dir, projects_file, projid_file, list(homedirs.keys()))
-
-        # First reconcile without any exclusions
-        reconcile_projfiles([base_dir], projects_file.name, projid_file.name, 1000)
-        reconcile_quotas(projid_file.name, 1000, [])
 
         quota_output = subprocess.check_output(
             ["xfs_quota", "-x", "-c", "report -N -p"]
@@ -206,9 +207,10 @@ def test_config_file():
     projid_file_path = "/etc/projid"
     base_dir = MOUNT_POINT
 
-    with open(projects_file_path, "w+b") as projects_file, open(
-        projid_file_path, "w+b"
-    ) as projid_file:
+    with (
+        open(projects_file_path, "w+b") as projects_file,
+        open(projid_file_path, "w+b") as projid_file,
+    ):
         _reset_quotas(base_dir, projects_file, projid_file, list(homedirs.keys()))
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py") as config_file:
@@ -247,7 +249,6 @@ def test_config_file():
             assert manager.paths == [base_dir]  # Should still be from config file
             assert manager.exclude == ["c", "d"]  # Should still be from config file
 
-            manager._initialize_projects()
             manager._reconcile_projfiles()
             manager._reconcile_quotas()
 
