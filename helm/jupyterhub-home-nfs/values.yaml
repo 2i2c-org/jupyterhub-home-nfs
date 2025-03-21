@@ -14,47 +14,35 @@ quotaEnforcer:
   image:
     repository: ghcr.io/2i2c-org/jupyterhub-home-nfs
     tag: 0.0.7
-  
-  # The entire configuration file content as a multi-line string.
-  # If this is defined, the individual parameters below will be ignored
-  # and we will use the content of this file instead for configuration.
-  # If this is not defined, the individual parameters below will be used
-  # as command-line arguments
-  # 
-  # Example:
-  # config_file: |
-  #   # Configuration file for the quota enforcer
-  #
-  #   # Path to scan for home directories
-  #   c.QuotaManager.paths = ["/export"]
-  #   
-  #   # Hard quota limit in GB
-  #   c.QuotaManager.hard_quota = 10
-  #   
-  #   # Wait time between reconciliation runs in seconds
-  #   c.QuotaManager.wait_time = 30
-  #   
-  #   # Minimum project ID to use
-  #   c.QuotaManager.min_projid = 1000
-  #   
-  #   # Projects file path
-  #   c.QuotaManager.projects_file = "/etc/projects"
-  #   
-  #   # Projid file path
-  #   c.QuotaManager.projid_file = "/etc/projid"
-  #   
-  #   # List of directory names to exclude from quota enforcement
-  #   c.QuotaManager.exclude = []
-  config_file: ""
 
-  # Individual configuration parameters used when config_file is not defined.
-  # These will be used as command-line arguments.
-  # Mostly kept for backward compatibility. Please use config_file instead.
-  path: "/export"
-  # quota in GB
-  hardQuota: "10"
-  exclude: []
-  # end of individual configuration parameters
+
+  # The "config" section below is rendered by a k8s Secret and mounted as a .yaml
+  # file together with quota-enforcer-config.py for the jupyterhub-home-nfs
+  # Python software to parse.
+  #
+  # Together they make the configured values below translate so that
+  # config.QuotaManager.paths sets c.QuotaManager.paths, or more generally that
+  # config.X.y sets c.X.y where X is a class and y is a configurable traitlet on
+  # the class.
+  config:
+    QuotaManager:
+      paths: ["/export"]
+      hard_quota: 10
+      wait_time: 30
+      min_projid: 1000
+      exclude: []
+
+  # The keys and values below are rendered by a k8s Secret and mounted as a .py
+  # file together with quota-enforcer-config.py. These are then executed by the
+  # quota enforcer container. They are useful for setting complex configurations
+  # that are not easily expressed as a simple YAML structure.
+  extraConfig: {}
+    # Example:
+    #
+    # jupyterhub-home-nfs-01-config: |
+    #   import os
+    #   c.QuotaManager.paths = [os.environ["JUPYTERHUB_HOME_NFS_PATH"]]
+
 
   resources: {}
 
