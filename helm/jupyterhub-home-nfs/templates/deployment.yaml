@@ -44,6 +44,7 @@ spec:
         - name: home-directories
           mountPath: /export
         resources: {{ toJson .Values.nfsServer.resources }}
+      {{- if .Values.quotaEnforcer.enabled }}
       - name: enforce-xfs-quota
         image: "{{ .Values.quotaEnforcer.image.repository }}:{{ .Values.quotaEnforcer.image.tag }}"
         command: ["python", "-m", "jupyterhub_home_nfs.generate", "--config-file", "/etc/jupyterhub-home-nfs/mounted-secret/quota-enforcer-config.py"]
@@ -55,6 +56,7 @@ spec:
         - name: quota-enforcer-config
           mountPath: /etc/jupyterhub-home-nfs/mounted-secret
         resources: {{ toJson .Values.quotaEnforcer.resources }}
+      {{- end }}
       {{- if .Values.prometheusExporter.enabled }}
       - name: metrics-exporter
         image: "{{ .Values.prometheusExporter.image.repository }}:{{ .Values.prometheusExporter.image.tag }}"

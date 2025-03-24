@@ -11,6 +11,7 @@ nfsServer:
 # This container enforces the quota on the home directories
 
 quotaEnforcer:
+  enabled: true
   image:
     repository: ghcr.io/2i2c-org/jupyterhub-home-nfs
     tag: 0.0.7
