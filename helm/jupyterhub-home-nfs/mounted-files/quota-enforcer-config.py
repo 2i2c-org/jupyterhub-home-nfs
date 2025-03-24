@@ -32,7 +32,7 @@ def get_chart_config(config_path=None, default=None):
     for key in config_path.split("."):
         if not isinstance(config, dict):
             # can't resolve full path,
-            # parent section's config is is a scalar or null
+            # parent section's config is a scalar or null
             return default
         if key not in config:
             return default
