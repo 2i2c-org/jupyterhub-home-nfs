@@ -75,6 +75,18 @@ persistentVolume:
 service:
   type: ClusterIP
 
+# Annotations for the deployment
+annotations: {}
+
+# Node selector for the deployment
+nodeSelector: {}
+
+# Affinity for the deployment
+affinity: {}
+
+# Tolerations for the deployment
+tolerations: []
+
 # Cloud provider specific configurations
 eks:
   enabled: false
