@@ -39,7 +39,7 @@
                     "type": "array",
                     "items": { "type": "string" }
                   },
-                  "hard_quota": { "type": "integer" },
+                  "hard_quota": { "type": "number" },
                   "wait_time": { "type": "integer" },
                   "min_projid": { "type": "integer" },
                   "exclude": {
