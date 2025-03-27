@@ -1,3 +1,42 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-client-pv
+  namespace: nfs-test
+spec:
+  capacity:
+    storage: 1Mi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: jupyterhub-home-nfs-nfs-service.nfs-test.svc.cluster.local
+    path: /staging
+  mountOptions:
+    - rsize=1048576
+    - wsize=1048576
+    - timeo=600
+    - soft
+    - retrans=2
+    - noresvport
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-client-pvc
+  namespace: nfs-test
+spec:
+  accessModes:
+    - ReadWriteMany
+  volumeName: nfs-client-pv
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 1Mi
+
+---
+
 kind: Pod
 apiVersion: v1
 metadata:
@@ -13,9 +52,7 @@ spec:
     volumeMounts:
     - name: data
       mountPath: /data
-      subPath: alice
   volumes:
   - name: data
-    nfs:
-      server: "nfs-service.nfs-test.svc.cluster.local"
-      path: "/"
+    persistentVolumeClaim:
+      claimName: nfs-client-pvc

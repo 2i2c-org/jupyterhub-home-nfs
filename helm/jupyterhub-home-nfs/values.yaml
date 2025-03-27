@@ -6,6 +6,13 @@ nfsServer:
     repository: ghcr.io/2i2c-org/nfs-ganesha
     tag: 0.0.7
   resources: {}
+  # Clients allowed to access the NFS server
+  # Example:
+  # allowedClients:
+  # - "10.128.0.0/20" # node CIDR
+  # - "10.120.0.0/16" # pod CIDR
+  # - "*" # allow all clients
+  allowedClients: []
 
 # Quota enforcer configuration
 # This container enforces the quota on the home directories

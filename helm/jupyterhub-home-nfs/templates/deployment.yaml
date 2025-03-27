@@ -25,6 +25,8 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
         {{- end }}
+        # checksum of the config file to trigger a deployment when the config changes
+        checksum/ganesha-config: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
       containers:
       - name: nfs-server
@@ -41,6 +43,9 @@ spec:
         volumeMounts:
         - name: home-directories
           mountPath: /export
+        - name: ganesha-config
+          mountPath: /etc/ganesha/ganesha.conf
+          subPath: ganesha.conf
         resources: {{ toJson .Values.nfsServer.resources }}
       - name: enforce-xfs-quota
         image: "{{ .Values.quotaEnforcer.image.repository }}:{{ .Values.quotaEnforcer.image.tag }}"
@@ -78,3 +83,6 @@ spec:
       - name: home-directories
         persistentVolumeClaim:
           claimName: {{ .Release.Name }}-nfs-home-directories-claim
+      - name: ganesha-config
+        configMap:
+          name: {{ .Release.Name }}-ganesha-config
