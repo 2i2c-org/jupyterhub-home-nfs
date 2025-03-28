@@ -9,10 +9,11 @@ nfsServer:
   # Clients allowed to access the NFS server
   # Example:
   # allowedClients:
-  # - "10.128.0.0/20" # node CIDR
-  # - "10.120.0.0/16" # pod CIDR
+  # - "10.128.0.0/20" # example CIDR block
+  # - "10.120.*.1" # example IP pattern
   # - "*" # allow all clients
-  allowedClients: []
+  allowedClients:
+    - "127.0.0.1" # allow localhost
 
 # Quota enforcer configuration
 # This container enforces the quota on the home directories
