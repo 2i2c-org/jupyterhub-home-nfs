@@ -18,6 +18,7 @@ services:
     privileged: true
     volumes:
       - ./jupyterhub_home_nfs:/app
-    command: sh -c "/usr/local/bin/mount-xfs.sh && python3 -m pytest -v /app/tests.py"
+      - ./tests:/app/tests
+    command: sh -c "/usr/local/bin/mount-xfs.sh && python3 -m pytest -v /app/tests/tests.py"
     environment:
       - PYTHONPATH=/app
