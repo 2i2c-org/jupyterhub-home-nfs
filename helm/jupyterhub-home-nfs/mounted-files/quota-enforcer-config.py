@@ -4,7 +4,6 @@ of loading chart configuration passed via "config" and "extraConfig".
 """
 
 from functools import lru_cache
-import os
 
 from ruamel.yaml import YAML
 
