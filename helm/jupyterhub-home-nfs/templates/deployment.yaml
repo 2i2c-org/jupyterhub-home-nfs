@@ -25,56 +25,76 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
         {{- end }}
+        # checksum of the config file to trigger a deployment when the config changes
+        checksum/mounted-secret: {{ include (print .Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.annotations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       containers:
-        - name: nfs-server
-          image: "{{ .Values.nfsServer.image.repository }}:{{ .Values.nfsServer.image.tag }}"
-          ports:
-            - name: nfs
-              containerPort: 2049
-            - name: mountd
-              containerPort: 20048
-            - name: rpcbind
-              containerPort: 111
-          securityContext:
-            privileged: true
-          volumeMounts:
-            - name: home-directories
-              mountPath: /export
-          resources: {{ toJson .Values.nfsServer.resources }}
-        - name: enforce-xfs-quota
-          image: "{{ .Values.quotaEnforcer.image.repository }}:{{ .Values.quotaEnforcer.image.tag }}"
-          command: ["/usr/local/bin/generate.py", "{{ .Values.quotaEnforcer.path }}", "--hard-quota", "{{ .Values.quotaEnforcer.hardQuota }}"
-          {{- range .Values.quotaEnforcer.exclude }}
-          , "--exclude", {{ . | quote }}
-          {{- end }}
-          ]
-          securityContext:
-            privileged: true
-          volumeMounts:
-            - name: home-directories
-              mountPath: /export
-          resources: {{ toJson .Values.quotaEnforcer.resources }}
-        {{- if .Values.prometheusExporter.enabled }}
-        - name: metrics-exporter
-          image: "{{ .Values.prometheusExporter.image.repository }}:{{ .Values.prometheusExporter.image.tag }}"
-          args:
-            # Disable default collectors; we only want filesystem metrics
-            - --collector.disable-defaults
-            - --collector.filesystem
-            # Exclude some patterns of mount points to avoid collecting unnecessary metrics
-            - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|etc|var/run/.+|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
-          ports:
-            - name: metrics
-              containerPort: 9100
-          volumeMounts:
-            - name: home-directories
-              # Mounting under /shared-volume to match path in dashboard definition in jupyterhub/grafana-dashboards
-              mountPath: /shared-volume
-              readOnly: true
-          resources: {{ toJson .Values.prometheusExporter.resources }}
-        {{- end }}
-      volumes:
+      - name: nfs-server
+        image: "{{ .Values.nfsServer.image.repository }}:{{ .Values.nfsServer.image.tag }}"
+        ports:
+        - name: nfs
+          containerPort: 2049
+        - name: mountd
+          containerPort: 20048
+        - name: rpcbind
+          containerPort: 111
+        securityContext:
+          privileged: true
+        volumeMounts:
         - name: home-directories
-          persistentVolumeClaim:
-            claimName: {{ .Release.Name }}-nfs-home-directories-claim
+          mountPath: /export
+        resources: {{ toJson .Values.nfsServer.resources }}
+      {{- if .Values.quotaEnforcer.enabled }}
+      - name: enforce-xfs-quota
+        image: "{{ .Values.quotaEnforcer.image.repository }}:{{ .Values.quotaEnforcer.image.tag }}"
+        command: ["python", "-m", "jupyterhub_home_nfs.generate", "--config-file", "/etc/jupyterhub-home-nfs/mounted-secret/quota-enforcer-config.py"]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: home-directories
+          mountPath: /export
+        - name: quota-enforcer-config
+          mountPath: /etc/jupyterhub-home-nfs/mounted-secret
+        resources: {{ toJson .Values.quotaEnforcer.resources }}
+      {{- end }}
+      {{- if .Values.prometheusExporter.enabled }}
+      - name: metrics-exporter
+        image: "{{ .Values.prometheusExporter.image.repository }}:{{ .Values.prometheusExporter.image.tag }}"
+        args:
+        # Disable default collectors; we only want filesystem metrics
+        - --collector.disable-defaults
+        - --collector.filesystem
+        # Exclude some patterns of mount points to avoid collecting unnecessary metrics
+        - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|etc|var/run/.+|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+        ports:
+        - name: metrics
+          containerPort: 9100
+        volumeMounts:
+        - name: home-directories
+          # Mounting under /shared-volume to match path in dashboard definition in jupyterhub/grafana-dashboards
+          mountPath: /shared-volume
+          readOnly: true
+        resources: {{ toJson .Values.prometheusExporter.resources }}
+      {{- end }}
+      volumes:
+      - name: home-directories
+        persistentVolumeClaim:
+          claimName: {{ .Release.Name }}-nfs-home-directories-claim
+      - name: quota-enforcer-config
+        secret:
+          secretName: {{ .Release.Name }}-secret
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -150,19 +150,6 @@ def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid)
         )
 
 
-def initialize_projects(projid_file_path):
-    """
-    Set up xfs_quota projects for all projects in /etc/projid
-    """
-    projects = parse_projids(projid_file_path)
-    for project in projects:
-        mountpoint = mountpoint_for(project)
-        subprocess.check_call(
-            ["xfs_quota", "-x", "-c", f"project -s {project}", mountpoint]
-        )
-        print(f"Setting up xfs_quota project for {project}")
-
-
 def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs):
     """
     Make sure each project in /etc/projid has correct hard quota set
@@ -173,6 +160,14 @@ def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs):
     # Fetch quota information from xfs_quota
     quotas = get_quotas()
     print(f"Quotas: {quotas}")
+
+    # Set up xfs_quota projects for all projects in /etc/projid
+    for project in projects:
+        mountpoint = mountpoint_for(project)
+        subprocess.check_call(
+            ["xfs_quota", "-x", "-c", f"project -s {project}", mountpoint]
+        )
+        print(f"Setting up xfs_quota project for {project}")
 
     # If exclude_dirs is provided, set quotas to 0 for those projects,
     # otherwise set the intended quota to hard_quota_kb
@@ -188,15 +183,10 @@ def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs):
         p for p in projects if quotas.get(p, {}).get("hard") != intended_quotas[p]
     ]
 
-    # Make sure xfs_quotas is in sync
+    # Adjust quotas for projects that don't the correct quota set
     if changed_projects:
         for project in changed_projects:
             mountpoint = mountpoint_for(project)
-            if project not in quotas:
-                subprocess.check_call(
-                    ["xfs_quota", "-x", "-c", f"project -s {project}", mountpoint]
-                )
-                print(f"Setting up xfs_quota project for {project}")
             if (
                 project not in quotas
                 or quotas[project]["hard"] != intended_quotas[project]
@@ -260,6 +250,7 @@ class QuotaManager(Application):
         "min-projid": "QuotaManager.min_projid",
         "wait-time": "QuotaManager.wait_time",
         "hard-quota": "QuotaManager.hard_quota",
+        "exclude": "QuotaManager.exclude",
     }
 
     def initialize(self, argv=None):
@@ -270,9 +261,6 @@ class QuotaManager(Application):
         if not self.paths:
             self.log.error("No paths specified!")
             sys.exit(1)
-
-    def _initialize_projects(self):
-        initialize_projects(self.projid_file)
 
     def _reconcile_projfiles(self):
         reconcile_projfiles(
@@ -290,8 +278,6 @@ class QuotaManager(Application):
         )
 
     def start(self):
-        self._initialize_projects()
-
         while True:
             self._reconcile_projfiles()
             self._reconcile_quotas()

@@ -50,8 +50,8 @@ def _reset_quotas(base_dir, projects_file, projid_file, homedirs):
     projid_file.truncate(0)
 
     # reconcile the projects and projid files
-    reconcile_projfiles([MOUNT_POINT], projects_file.name, projid_file.name, 0)
-    reconcile_quotas(projid_file.name, 0, [])
+    reconcile_projfiles([MOUNT_POINT], projects_file.name, projid_file.name, 1000)
+    reconcile_quotas(projid_file.name, 1000, [])
 
 
 def test_reconcile_projids():
@@ -124,10 +124,6 @@ def test_exclude_dirs():
         open(projid_file_path, "w+b") as projid_file,
     ):
         _reset_quotas(base_dir, projects_file, projid_file, list(homedirs.keys()))
-
-        # First reconcile without any exclusions
-        reconcile_projfiles([base_dir], projects_file.name, projid_file.name, 1000)
-        reconcile_quotas(projid_file.name, 1000, [])
 
         quota_output = subprocess.check_output(
             ["xfs_quota", "-x", "-c", "report -N -p"]
@@ -252,7 +248,6 @@ def test_config_file():
             assert manager.paths == [base_dir]  # Should still be from config file
             assert manager.exclude == ["c", "d"]  # Should still be from config file
 
-            manager._initialize_projects()
             manager._reconcile_projfiles()
             manager._reconcile_quotas()
 

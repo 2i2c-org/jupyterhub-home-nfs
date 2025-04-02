@@ -11,14 +11,41 @@ nfsServer:
 # This container enforces the quota on the home directories
 
 quotaEnforcer:
+  enabled: true
   image:
-    repository: ghcr.io/2i2c-org/get-quota-your-home
+    repository: ghcr.io/2i2c-org/jupyterhub-home-nfs
     tag: 0.0.7
-  path: "/export"
-  # quota in GB
-  hardQuota: "10"
+
+
+  # The "config" section below is rendered by a k8s Secret and mounted as a .yaml
+  # file together with quota-enforcer-config.py for the jupyterhub-home-nfs
+  # Python software to parse.
+  #
+  # Together they make the configured values below translate so that
+  # config.QuotaManager.paths sets c.QuotaManager.paths, or more generally that
+  # config.X.y sets c.X.y where X is a class and y is a configurable traitlet on
+  # the class.
+  config:
+    QuotaManager:
+      paths: ["/export"]
+      hard_quota: 10
+      wait_time: 30
+      min_projid: 1000
+      exclude: []
+
+  # The keys and values below are rendered by a k8s Secret and mounted as a .py
+  # file together with quota-enforcer-config.py. These are then executed by the
+  # quota enforcer container. They are useful for setting complex configurations
+  # that are not easily expressed as a simple YAML structure.
+  extraConfig: {}
+    # Example:
+    #
+    # jupyterhub-home-nfs-01-config: |
+    #   import os
+    #   c.QuotaManager.paths = [os.environ["JUPYTERHUB_HOME_NFS_PATH"]]
+
+
   resources: {}
-  exclude: []
 
 # Prometheus exporter configuration
 # We export disk usage metrics using the Prometheus node exporter
@@ -33,9 +60,13 @@ prometheusExporter:
 # Persistent volume configuration
 
 persistentVolume:
-  # The size should match the pre-provisioned disk size
+  # Setting this to 1M to make it obvious that this is not the real size.
+  # The value can be changed to the actual size of the pre-provisioned disk to correctly
+  # label the PV and PVC with the underlying disk size.
+  # Not setting this to the actual size of the pre-provisioned disk doesn't affect the
+  # functionality of the chart; only the labels on the PV and PVC will be incorrect.
   # The pre-provisioned disk ID is specified below in the cloud provider specific configuration
-  size: 10Gi
+  size: 1M
   storageClass: ""
   accessModes:
     - ReadWriteOnce
@@ -43,6 +74,18 @@ persistentVolume:
 
 service:
   type: ClusterIP
+
+# Annotations for the deployment
+annotations: {}
+
+# Node selector for the deployment
+nodeSelector: {}
+
+# Affinity for the deployment
+affinity: {}
+
+# Tolerations for the deployment
+tolerations: []
 
 # Cloud provider specific configurations
 eks:
