@@ -1,18 +1,17 @@
 import os
-from pprint import pprint  # noqa: F401
 import subprocess
 import tempfile
 import textwrap
+from pprint import pprint  # noqa: F401
 
 import pytest
 
 from jupyterhub_home_nfs.generate import (
-    reconcile_projfiles,
     OWNERSHIP_PREAMBLE,
-    reconcile_quotas,
     QuotaManager,
+    reconcile_projfiles,
+    reconcile_quotas,
 )
-
 
 # This is the mount point defined in mount-xfs.sh
 # It is named docker-test-xfs to avoid conflicts with the host's mount point

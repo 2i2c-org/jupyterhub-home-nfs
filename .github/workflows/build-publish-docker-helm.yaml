@@ -6,7 +6,7 @@ on:
     branches:
       - main
     tags:
-      - '**'
+      - "**"
 
 permissions:
   packages: write
@@ -15,45 +15,45 @@ jobs:
   publish-charts:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
 
-    - name: Install chartpress
-      run: pip install chartpress
+      - name: Install chartpress
+        run: pip install chartpress
 
-    - name: Configure Git
-      run: |
-        git config user.name "${{ github.actor }}"
-        git config user.email "${{ github.actor }}@users.noreply.github.com"
-    
-    - name: Lint Helm Chart
-      run: |
-        helm lint helm/jupyterhub-home-nfs
+      - name: Configure Git
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
 
-    - name: Run chartpress
-      run: |
-        chartpress --push
+      - name: Lint Helm Chart
+        run: |
+          helm lint helm/jupyterhub-home-nfs
 
-    - name: Get the version
-      id: get_version
-      run: echo ::set-output name=VERSION::$(cat helm/jupyterhub-home-nfs/Chart.yaml | grep version | awk '{print $2}')
+      - name: Run chartpress
+        run: |
+          chartpress --push
 
-    - name: Package Helm Chart
-      run: |
-        helm package helm/jupyterhub-home-nfs -d .helm-charts
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::$(cat helm/jupyterhub-home-nfs/Chart.yaml | grep version | awk '{print $2}')
 
-    - name: Push Helm Chart
-      run: |
-        helm push .helm-charts/jupyterhub-home-nfs-${{ steps.get_version.outputs.VERSION }}.tgz oci://ghcr.io/2i2c-org/jupyterhub-home-nfs
+      - name: Package Helm Chart
+        run: |
+          helm package helm/jupyterhub-home-nfs -d .helm-charts
+
+      - name: Push Helm Chart
+        run: |
+          helm push .helm-charts/jupyterhub-home-nfs-${{ steps.get_version.outputs.VERSION }}.tgz oci://ghcr.io/2i2c-org/jupyterhub-home-nfs

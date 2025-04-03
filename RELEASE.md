@@ -10,17 +10,17 @@ To update the version:
 
    Ensure your local repository is up-to-date and install required tools:
 
-    ```bash
-    git checkout main
-    git fetch origin main
-    git reset --hard origin/main
-    ```
+   ```bash
+   git checkout main
+   git fetch origin main
+   git reset --hard origin/main
+   ```
 
-    Install tbump if not already installed:
+   Install tbump if not already installed:
 
-    ```bash
-    pip install tbump
-    ```
+   ```bash
+   pip install tbump
+   ```
 
 2. **Update Version with tbump**
 
@@ -39,6 +39,7 @@ To update the version:
    ```
 
    This will:
+
    - Update `__version__` in `jupyterhub_home_nfs/__init__.py`
    - Update version and appVersion in `helm/jupyterhub-home-nfs/Chart.yaml`
    - Create a git commit
@@ -56,7 +57,7 @@ To update the version:
 4. **CI Automation**
 
    Once we create a tag, the GitHub Actions workflow ([`build-publish-docker-helm.yaml`](https://github.com/2i2c-org/jupyterhub-home-nfs/blob/main/.github/workflows/build-publish-docker-helm.yaml)) will automatically:
-   
+
    - Build the Docker images
    - Push them to GitHub Container Registry (ghcr.io)
    - Update the Helm chart with the new image tags

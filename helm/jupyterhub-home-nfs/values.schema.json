@@ -1,129 +1,135 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "properties": {
-      "nfsServer": {
-        "type": "object",
-        "properties": {
-          "image": {
-            "type": "object",
-            "properties": {
-              "repository": { "type": "string" },
-              "tag": { "type": "string" }
-            },
-            "required": ["repository", "tag"]
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "nfsServer": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" }
           },
-          "resources": { "type": "object" }
+          "required": ["repository", "tag"]
         },
-        "required": ["image"]
+        "resources": { "type": "object" }
       },
-      "quotaEnforcer": {
-        "type": "object",
-        "properties": {
-          "enabled": { "type": "boolean" },
-          "image": {
-            "type": "object",
-            "properties": {
-              "repository": { "type": "string" },
-              "tag": { "type": "string" }
-            },
-            "required": ["repository", "tag"]
-          },
-          "config": {
-            "type": "object",
-            "properties": {
-              "QuotaManager": {
-                "type": "object",
-                "properties": {
-                  "paths": {
-                    "type": "array",
-                    "items": { "type": "string" }
-                  },
-                  "hard_quota": { "type": "number" },
-                  "wait_time": { "type": "integer" },
-                  "min_projid": { "type": "integer" },
-                  "exclude": {
-                    "type": "array",
-                    "items": { "type": "string" }
-                  }
-                },
-                "required": ["paths", "hard_quota", "wait_time", "min_projid"]
-              }
-            },
-            "required": ["QuotaManager"]
-          },
-          "extraConfig": { "type": "object" },
-          "resources": { "type": "object" }
-        },
-        "required": ["image", "config", "enabled"]
-      },
-      "prometheusExporter": {
-        "type": "object",
-        "properties": {
-          "enabled": { "type": "boolean" },
-          "image": {
-            "type": "object",
-            "properties": {
-              "repository": { "type": "string" },
-              "tag": { "type": "string" }
-            },
-            "required": ["repository", "tag"]
-          },
-          "resources": { "type": "object" }
-        },
-        "required": ["enabled", "image"]
-      },
-      "persistentVolume": {
-        "type": "object",
-        "properties": {
-          "size": { "type": "string" },
-          "storageClass": { "type": "string" },
-          "accessModes": {
-            "type": "array",
-            "items": { "type": "string" }
-          },
-          "annotations": { "type": "object" }
-        },
-        "required": ["size", "accessModes"]
-      },
-      "service": {
-        "type": "object",
-        "properties": {
-          "type": { "type": "string" }
-        },
-        "required": ["type"]
-      },
-      "annotations": { "type": "object" },
-      "nodeSelector": { "type": "object" },
-      "affinity": { "type": "object" },
-      "tolerations": {
-        "type": "array",
-        "items": { "type": "object" }
-      },
-      "eks": {
-        "type": "object",
-        "properties": {
-          "enabled": { "type": "boolean" },
-          "volumeId": { "type": "string" }
-        },
-        "required": ["enabled", "volumeId"]
-      },
-      "gke": {
-        "type": "object",
-        "properties": {
-          "enabled": { "type": "boolean" },
-          "volumeId": { "type": "string" }
-        },
-        "required": ["enabled", "volumeId"]
-      },
-      "openstack": {
-        "type": "object",
-        "properties": {
-          "enabled": { "type": "boolean" },
-          "volumeId": { "type": "string" }
-        },
-        "required": ["enabled", "volumeId"]
-      }
+      "required": ["image"]
     },
-    "required": ["nfsServer", "quotaEnforcer", "prometheusExporter", "persistentVolume", "service"]
-  }
+    "quotaEnforcer": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" }
+          },
+          "required": ["repository", "tag"]
+        },
+        "config": {
+          "type": "object",
+          "properties": {
+            "QuotaManager": {
+              "type": "object",
+              "properties": {
+                "paths": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "hard_quota": { "type": "number" },
+                "wait_time": { "type": "integer" },
+                "min_projid": { "type": "integer" },
+                "exclude": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              },
+              "required": ["paths", "hard_quota", "wait_time", "min_projid"]
+            }
+          },
+          "required": ["QuotaManager"]
+        },
+        "extraConfig": { "type": "object" },
+        "resources": { "type": "object" }
+      },
+      "required": ["image", "config", "enabled"]
+    },
+    "prometheusExporter": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" }
+          },
+          "required": ["repository", "tag"]
+        },
+        "resources": { "type": "object" }
+      },
+      "required": ["enabled", "image"]
+    },
+    "persistentVolume": {
+      "type": "object",
+      "properties": {
+        "size": { "type": "string" },
+        "storageClass": { "type": "string" },
+        "accessModes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "annotations": { "type": "object" }
+      },
+      "required": ["size", "accessModes"]
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" }
+      },
+      "required": ["type"]
+    },
+    "annotations": { "type": "object" },
+    "nodeSelector": { "type": "object" },
+    "affinity": { "type": "object" },
+    "tolerations": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "eks": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "volumeId": { "type": "string" }
+      },
+      "required": ["enabled", "volumeId"]
+    },
+    "gke": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "volumeId": { "type": "string" }
+      },
+      "required": ["enabled", "volumeId"]
+    },
+    "openstack": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "volumeId": { "type": "string" }
+      },
+      "required": ["enabled", "volumeId"]
+    }
+  },
+  "required": [
+    "nfsServer",
+    "quotaEnforcer",
+    "prometheusExporter",
+    "persistentVolume",
+    "service"
+  ]
+}

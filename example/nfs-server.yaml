@@ -11,7 +11,7 @@ spec:
   volumeMode: Filesystem
   accessModes:
     - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain  # <--- This is the key to retain the disk
+  persistentVolumeReclaimPolicy: Retain # <--- This is the key to retain the disk
   storageClassName: ""
   gcePersistentDisk:
     pdName: jupyter-nfs-home-directories
@@ -24,10 +24,9 @@ spec:
     - inode64
     - logbufs=8
     - logbsize=32k
-    - pquota  # <--- This is the key to enable XFS quota
+    - pquota # <--- This is the key to enable XFS quota
 
 ---
-
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -44,7 +43,6 @@ spec:
   volumeName: nfs-home-directories
 
 ---
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -60,35 +58,35 @@ spec:
         app: nfs-server
     spec:
       containers:
-      - name: nfs-server
-        image: ghcr.io/sunu/nfs-ganesha:402484a8540558e822b5eb092802fa65a09383cb
-        ports:
-        - name: nfs
-          containerPort: 2049
-        - name: mountd
-          containerPort: 20048
-        - name: rpcbind
-          containerPort: 111
-        securityContext:
-          privileged: true
-        volumeMounts:
-        - name: home-directories
-          mountPath: /export
-      - name: enforce-xfs-quota
-        image: ghcr.io/sunu/nfs-get-quota-your-home:f9cf31cf51a1794b4c359dfa9aa7a6fe8a8f4c71
-        command: ["/usr/local/bin/generate.py", "/export", "--hard-quota", "0.001"]
-        securityContext:
-          privileged: true
-        volumeMounts:
-        - name: home-directories
-          mountPath: /export
+        - name: nfs-server
+          image: ghcr.io/sunu/nfs-ganesha:402484a8540558e822b5eb092802fa65a09383cb
+          ports:
+            - name: nfs
+              containerPort: 2049
+            - name: mountd
+              containerPort: 20048
+            - name: rpcbind
+              containerPort: 111
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: home-directories
+              mountPath: /export
+        - name: enforce-xfs-quota
+          image: ghcr.io/sunu/nfs-get-quota-your-home:f9cf31cf51a1794b4c359dfa9aa7a6fe8a8f4c71
+          command:
+            ["/usr/local/bin/generate.py", "/export", "--hard-quota", "0.001"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: home-directories
+              mountPath: /export
       volumes:
-      - name: home-directories
-        persistentVolumeClaim:
-          claimName: nfs-home-directories
+        - name: home-directories
+          persistentVolumeClaim:
+            claimName: nfs-home-directories
 
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -96,11 +94,11 @@ metadata:
   namespace: nfs-test
 spec:
   ports:
-  - name: nfs
-    port: 2049
-  - name: mountd
-    port: 20048
-  - name: rpcbind
-    port: 111
+    - name: nfs
+      port: 2049
+    - name: mountd
+      port: 20048
+    - name: rpcbind
+      port: 111
   selector:
     app: nfs-server

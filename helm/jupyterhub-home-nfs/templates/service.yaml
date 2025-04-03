@@ -5,11 +5,11 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-  - name: nfs
-    port: 2049
-  - name: mountd
-    port: 20048
-  - name: rpcbind
-    port: 111
+    - name: nfs
+      port: 2049
+    - name: mountd
+      port: 20048
+    - name: rpcbind
+      port: 111
   selector:
     app: nfs-server
