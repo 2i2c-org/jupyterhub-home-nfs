@@ -6,6 +6,19 @@ nfsServer:
     repository: ghcr.io/2i2c-org/nfs-ganesha
     tag: 0.0.7
   resources: {}
+  # Whether to enable a client whitelist
+  # If true, only the clients in allowedClients will be allowed to access the NFS server
+  # If false, all clients will be allowed to access the NFS server
+  enableClientWhitelist: false
+  # Clients allowed to access the NFS server
+  # Only enforced if enableClientWhitelist is true
+  # Example:
+  # allowedClients:
+  # - "10.128.0.0/20" # example CIDR block
+  # - "10.120.*.1" # example IP pattern
+  # - "*" # allow all clients
+  allowedClients:
+    - "127.0.0.1" # allow localhost
 
 # Quota enforcer configuration
 # This container enforces the quota on the home directories
