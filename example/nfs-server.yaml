@@ -59,7 +59,7 @@ spec:
     spec:
       containers:
         - name: nfs-server
-          image: ghcr.io/sunu/nfs-ganesha:402484a8540558e822b5eb092802fa65a09383cb
+          image: ghcr.io/2i2c-org/nfs-ganesha:0.0.1-0.dev.git.1.hcede885
           ports:
             - name: nfs
               containerPort: 2049
@@ -73,9 +73,9 @@ spec:
             - name: home-directories
               mountPath: /export
         - name: enforce-xfs-quota
-          image: ghcr.io/sunu/nfs-get-quota-your-home:f9cf31cf51a1794b4c359dfa9aa7a6fe8a8f4c71
+          image: ghcr.io/2i2c-org/jupyterhub-home-nfs:0.0.1-0.dev.git.1.hcede885
           command:
-            ["/usr/local/bin/generate.py", "/export", "--hard-quota", "0.001"]
+            ["python", "-m", "jupyterhub_home_nfs.generate", "/export", "--hard-quota", "0.001"]
           securityContext:
             privileged: true
           volumeMounts:
