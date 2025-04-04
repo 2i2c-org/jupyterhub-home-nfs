@@ -20,7 +20,6 @@ spec:
     - noresvport
 
 ---
-
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -36,7 +35,6 @@ spec:
       storage: 1Mi
 
 ---
-
 kind: Pod
 apiVersion: v1
 metadata:
@@ -44,15 +42,15 @@ metadata:
   namespace: nfs-test
 spec:
   containers:
-  - name: busybox
-    image: busybox
-    command:
-    - sleep
-    - "3600"
-    volumeMounts:
-    - name: data
-      mountPath: /data
+    - name: busybox
+      image: busybox
+      command:
+        - sleep
+        - "3600"
+      volumeMounts:
+        - name: data
+          mountPath: /data
   volumes:
-  - name: data
-    persistentVolumeClaim:
-      claimName: test-nfs-client-pvc
+    - name: data
+      persistentVolumeClaim:
+        claimName: test-nfs-client-pvc

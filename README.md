@@ -20,6 +20,7 @@ helm install jupyterhub-home-nfs oci://ghcr.io/2i2c-org/jupyterhub-home-nfs/jupy
 
 > [!WARNING]  
 > By default, the NFS server is accessible from within the cluster without any authentication. It is recommended to restrict access to the NFS server by enforcing Network Policies or enabling client whitelisting to allow access only through kubelet and not from the pods directly.
+
 ### GKE
 
 On GKE, this can be done by enabling client whitelisting in the values.yaml file and allowing access only from the IP range used by the kubelet agent on the nodes.
@@ -32,7 +33,7 @@ We need to find the podCIDR range for the nodes in the cluster. This can be done
 kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}'
 ```
 
-Once we have the podCIDR range for all the nodes, we can infer the allowedClients value from the podCIDR ranges. For example, if the podCIDR range for the nodes is 10.120.2.0/24, 10.120.3.0/24 and 10.120.4.0/24, the allowedClients value should be 10.120.*.1 where we use the * wildcard to account for all the nodes and the .1 is the first IP address in the podCIDR range.
+Once we have the podCIDR range for all the nodes, we can infer the allowedClients value from the podCIDR ranges. For example, if the podCIDR range for the nodes is 10.120.2.0/24, 10.120.3.0/24 and 10.120.4.0/24, the allowedClients value should be 10.120._.1 where we use the _ wildcard to account for all the nodes and the .1 is the first IP address in the podCIDR range.
 
 ```yaml
 nfsServer:
@@ -42,7 +43,6 @@ nfsServer:
 ```
 
 Additionally, we can use Kubernetes Network Policies to block direct access to the NFS server from the pods. The documentation of Zero to JupyterHub has a [relevant section](https://z2jh.jupyter.org/en/stable/administrator/security.html#kubernetes-network-policies) that can be used as a reference for blocking access to the NFS server from the single-user pods of JupyterHub.
-
 
 ### EKS
 

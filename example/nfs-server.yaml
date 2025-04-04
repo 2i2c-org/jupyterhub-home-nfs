@@ -75,7 +75,14 @@ spec:
         - name: enforce-xfs-quota
           image: ghcr.io/2i2c-org/jupyterhub-home-nfs:0.0.1-0.dev.git.1.hcede885
           command:
-            ["python", "-m", "jupyterhub_home_nfs.generate", "/export", "--hard-quota", "0.001"]
+            [
+              "python",
+              "-m",
+              "jupyterhub_home_nfs.generate",
+              "/export",
+              "--hard-quota",
+              "0.001",
+            ]
           securityContext:
             privileged: true
           volumeMounts:
