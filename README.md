@@ -18,8 +18,8 @@ helm install jupyterhub-home-nfs oci://ghcr.io/2i2c-org/jupyterhub-home-nfs/jupy
 
 ## Security
 
-By default, the NFS server is accessible from within the cluster without any authentication. It is recommended to restrict access to the NFS server by enforcing Network Policies or enabling client whitelisting to allow access only through kubelet and not from the pods directly.
-
+> [!WARNING]  
+> By default, the NFS server is accessible from within the cluster without any authentication. It is recommended to restrict access to the NFS server by enforcing Network Policies or enabling client whitelisting to allow access only through kubelet and not from the pods directly.
 ### GKE
 
 On GKE, this can be done by enabling client whitelisting in the values.yaml file and allowing access only from the IP range used by the kubelet agent on the nodes.
@@ -41,13 +41,16 @@ nfsServer:
     - "10.120.*.1"
 ```
 
-Additionally, we can use a Network Policy to block direct access to the NFS server from the pods.
+Additionally, we can use Kubernetes Network Policies to block direct access to the NFS server from the pods. The documentation of Zero to JupyterHub has a [relevant section](https://z2jh.jupyter.org/en/stable/administrator/security.html#kubernetes-network-policies) that can be used as a reference for blocking access to the NFS server from the single-user pods of JupyterHub.
+
 
 ### EKS
 
 On EKS, by default Amazon VPC CNI assigns IPs to pods from the same subnet as the nodes. So there is no way to define a separate CIDR block or pattern to allow access only from the kubelet.
 
 One way to restrict access to the NFS server is to use a Network Policy to allow access only from the pods that need access to the NFS server. But since Amazon VPC CNI [does not support enforcing Network Policies on the pods not managed by a deployment](https://docs.aws.amazon.com/eks/latest/userguide/cni-network-policy.html#cni-network-policy-considerations), we need to make sure we use an alternative to Amazon VPC CNI like [Calico](https://docs.tigera.io/calico/latest/getting-started/kubernetes/managed-public-cloud/eks). Note that Calico can be configured to use Amazon VPC CNI as the underlying network provider.
+
+The documentation of Zero to JupyterHub has a [relevant section](https://z2jh.jupyter.org/en/stable/administrator/security.html#kubernetes-network-policies) that can be used as a reference for blocking access to the NFS server from the single-user pods of JupyterHub.
 
 Alternatively, we can use IP tables to restrict access to the NFS server. Here's an example of an init container that can be added to the pod definition to restrict access to the NFS server:
 
