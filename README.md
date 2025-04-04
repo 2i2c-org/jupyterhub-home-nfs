@@ -33,7 +33,7 @@ We need to find the podCIDR range for the nodes in the cluster. This can be done
 kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}'
 ```
 
-Once we have the podCIDR range for all the nodes, we can infer the allowedClients value from the podCIDR ranges. For example, if the podCIDR range for the nodes is 10.120.2.0/24, 10.120.3.0/24 and 10.120.4.0/24, the allowedClients value should be 10.120._.1 where we use the _ wildcard to account for all the nodes and the .1 is the first IP address in the podCIDR range.
+Once we have the podCIDR range for all the nodes, we can infer the allowedClients value from the podCIDR ranges. For example, if the podCIDR range for the nodes is 10.120.2.0/24, 10.120.3.0/24 and 10.120.4.0/24, the allowedClients value should be `10.120.*.1` where we use the `*` wildcard to account for all the nodes and the `.1` is the first IP address in the podCIDR range.
 
 ```yaml
 nfsServer:
