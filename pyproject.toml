@@ -29,7 +29,7 @@ path = "jupyterhub_home_nfs/__init__.py"
 github_url = "https://github.com/2i2c-org/jupyterhub-home-nfs"
 
 [tool.tbump.version]
-current = "0.1.0"
+current = "0.2.0"
 regex = '''
   (?P<major>\d+)
   \.
