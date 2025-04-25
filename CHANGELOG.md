@@ -5,6 +5,7 @@
 ## v0.2.0 - 2025-04-21
 
 ### Breaking Changes
+
 - Configuration and command-line arguments are now managed using [traitlets](https://traitlets.readthedocs.io/en/stable/), providing type validation and aligning with patterns used across the JupyterHub ecosystem. This introduces a breaking change in how Helm values are passed. Part of [PR #22](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/22).
 
   For example, the path, hard quota limits etc are now passed in `quotaEnforcer.config.QuotaManager` instead of directly under `quotaEnforcer`. For example:
