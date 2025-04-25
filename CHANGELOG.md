@@ -5,28 +5,27 @@
 ## v0.2.0 - 2025-04-21
 
 ### Breaking Changes
-
-- We now use [traitlets](https://traitlets.readthedocs.io/en/stable/) to handle configuration and command line arguments. Part of [PR #22](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/22). This is a breaking change in how Helm values are passed in:
+- Configuration and command-line arguments are now managed using [traitlets](https://traitlets.readthedocs.io/en/stable/), providing type validation and aligning with patterns used across the JupyterHub ecosystem. This introduces a breaking change in how Helm values are passed. Part of [PR #22](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/22).
 
   For example, the path, hard quota limits etc are now passed in `quotaEnforcer.config.QuotaManager` instead of directly under `quotaEnforcer`. For example:
 
   ```yaml
   quotaEnforcer:
-  config:
-    QuotaManager:
-      paths: ["/export"]
-      hard_quota: 10
+    config:
+      QuotaManager:
+        paths: ["/export"]
+        hard_quota: 10
   ```
 
 - As part of [PR #22](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/22), the default persistent volume size label was updated from 10Gi to 1M to clarify that it's a placeholder and not the actual disk size.
-  For existing deployments, if the size was previously unset, it must now be explicitly set to the current value (e.g. `10Gi`) like this:
+  For existing deployments, if the size was previously unset, it must now be explicitly set to the current value (e.g. `10Gi`) under the `persistentVolume` section like this:
 
-      ```yaml
-      persistentVolume:
-        size: 10Gi
-      ```
+  ```yaml
+  persistentVolume:
+    size: 10Gi
+  ```
 
-      This avoids Kubernetes errors due to the perceived size reduction from 10Gi to 1M.
+  This avoids Kubernetes errors due to the perceived size reduction from 10Gi to 1M.
 
 ### Enhancements
 
