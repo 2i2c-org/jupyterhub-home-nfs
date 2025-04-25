@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+Future changes that are not yet released.
+
 ## v0.2.0 - 2025-04-21
 
 ### Breaking Changes
