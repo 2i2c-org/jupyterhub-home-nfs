@@ -12,7 +12,6 @@ on:
       - ".pre-commit-config.yaml"
       - ".github/**"
       - ".gitignore"
-
     tags:
       - "**"
 
