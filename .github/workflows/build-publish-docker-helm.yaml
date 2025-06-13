@@ -48,7 +48,7 @@ jobs:
 
       - name: Get the version
         id: get_version
-        run: echo "VERSION=$(grep "version:" helm/jupyterhub-home-nfs/Chart.yaml | awk '{print $2}')" >> $GITHUB_ENV
+        run: echo "VERSION=$(grep "^version:" helm/jupyterhub-home-nfs/Chart.yaml | awk '{print $2}')" >> $GITHUB_ENV
 
       - name: Package Helm Chart
         run: |
