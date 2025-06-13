@@ -48,7 +48,7 @@ jobs:
 
       - name: Get the version
         id: get_version
-        run: echo ::set-output name=VERSION::$(cat helm/jupyterhub-home-nfs/Chart.yaml | grep version | awk '{print $2}')
+        run: echo "VERSION=$(grep "version:" helm/jupyterhub-home-nfs/Chart.yaml | awk '{print $2}')" >> $GITHUB_ENV
 
       - name: Package Helm Chart
         run: |
@@ -56,4 +56,4 @@ jobs:
 
       - name: Push Helm Chart
         run: |
-          helm push .helm-charts/jupyterhub-home-nfs-${{ steps.get_version.outputs.VERSION }}.tgz oci://ghcr.io/2i2c-org/jupyterhub-home-nfs
+          helm push .helm-charts/jupyterhub-home-nfs-${{ env.VERSION }}.tgz oci://ghcr.io/2i2c-org/jupyterhub-home-nfs
