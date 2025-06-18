@@ -12,7 +12,11 @@ An NFS server for JupyterHub that runs within your Kubernetes cluster to provide
 
 JupyterHub Home NFS is installed as a Helm chart.
 
+### Prerequisites
+
 As a prerequisite, we need to create a volume in the cloud provider to store the home directories. Right now, we only support GKE, EKS and OpenStack. After the volume is created, we need to update the `values.yaml` file with the volume ID.
+
+### Example configuration
 
 Here's an example of a values.yaml file that can be used to install the Helm chart:
 
@@ -28,6 +32,8 @@ quotaEnforcer:
 
 Here we are using a GKE volume to store the home directories. We are also enabling the Prometheus exporter to collect disk usage metrics from the NFS server. And enforcing a hard quota of 1GB per user.
 
+### Installation through Helm
+
 Once we have the values.yaml file, we can install the Helm chart using the following command:
 
 ```bash
@@ -35,6 +41,8 @@ helm upgrade --install --namespace jupyterhub-home-nfs --create-namespace jupyte
 ```
 
 Please refer to the [values.yaml](helm/jupyterhub-home-nfs/values.yaml) file for the complete list of configurable parameters.
+
+### Using the NFS server in JupyterHub
 
 Once the Helm chart is installed and running, please note the address of the NFS server. It can be found in the output of `kubectl get svc -n jupyterhub-home-nfs`.
 
