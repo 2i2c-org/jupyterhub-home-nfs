@@ -12,7 +12,6 @@ An NFS server for JupyterHub that runs within your Kubernetes cluster to provide
 
 JupyterHub Home NFS is installed as a Helm chart.
 
-
 As a prerequisite, we need to create a volume in the cloud provider to store the home directories. Right now, we only support GKE, EKS and OpenStack. After the volume is created, we need to update the `values.yaml` file with the volume ID.
 
 Here's an example of a values.yaml file that can be used to install the Helm chart:
@@ -24,7 +23,7 @@ gke:
   enabled: true
   volumeId: projects/example-project/zones/europe-west2-b/disks/hub-nfs-homedirs
 quotaEnforcer:
-  hardQuota: '1' # in GB
+  hardQuota: "1" # in GB
 ```
 
 Here we are using a GKE volume to store the home directories. We are also enabling the Prometheus exporter to collect disk usage metrics from the NFS server. And enforcing a hard quota of 1GB per user.
