@@ -12,8 +12,56 @@ An NFS server for JupyterHub that runs within your Kubernetes cluster to provide
 
 JupyterHub Home NFS is installed as a Helm chart.
 
+
+As a prerequisite, we need to create a volume in the cloud provider to store the home directories. Right now, we only support GKE, EKS and OpenStack. After the volume is created, we need to update the `values.yaml` file with the volume ID.
+
+Here's an example of a values.yaml file that can be used to install the Helm chart:
+
+```yaml
+prometheusExporter:
+  enabled: true
+gke:
+  enabled: true
+  volumeId: projects/example-project/zones/europe-west2-b/disks/hub-nfs-homedirs
+quotaEnforcer:
+  hardQuota: '1' # in GB
+```
+
+Here we are using a GKE volume to store the home directories. We are also enabling the Prometheus exporter to collect disk usage metrics from the NFS server. And enforcing a hard quota of 1GB per user.
+
+Once we have the values.yaml file, we can install the Helm chart using the following command:
+
 ```bash
-helm install jupyterhub-home-nfs oci://ghcr.io/2i2c-org/jupyterhub-home-nfs/jupyterhub-home-nfs --values values.yaml
+helm upgrade --install --namespace jupyterhub-home-nfs --create-namespace jupyterhub-home-nfs oci://ghcr.io/2i2c-org/jupyterhub-home-nfs/jupyterhub-home-nfs --values values.yaml
+```
+
+Please refer to the [values.yaml](helm/jupyterhub-home-nfs/values.yaml) file for the complete list of configurable parameters.
+
+Once the Helm chart is installed and running, please note the address of the NFS server. It can be found in the output of `kubectl get svc -n jupyterhub-home-nfs`.
+
+Once you have the address of the NFS server, you can use it to mount the home directories in your JupyterHub deployment using the example configuration in `examples/`.
+
+First, we need to create a PersistentVolume and a PersistentVolumeClaim to mount the home directories using the NFS server created by JupyterHub Home NFS. To do this, replace the `server` field in the `nfs` section of the `PersistentVolume` with the address of the NFS server in [examples/jupyterhub-nfs-volume.yaml](examples/jupyterhub-nfs-volume.yaml).
+
+```yaml
+nfs:
+  server: jupyterhub-home-nfs-nfs-service.jupyterhub-home-nfs.svc.cluster.local
+```
+
+And then create the PersistentVolume and the PersistentVolumeClaim using the following command:
+
+```bash
+kubectl apply -f examples/jupyterhub-nfs-volume.yaml
+```
+
+Once the PersistentVolume and the PersistentVolumeClaim are created, you can use them to mount the home directories in your JupyterHub deployment. For example, we can use `examples/jupyterhub-values.yaml` to install JupyterHub with the home directories mounted using the NFS server created by JupyterHub Home NFS.
+
+```bash
+helm upgrade --cleanup-on-fail \
+  --repo https://hub.jupyter.org/helm-chart/ \
+  --install home-nfs-jupyterhub jupyterhub \
+  --namespace jupyterhub-home-nfs \
+  --values examples/jupyterhub-values.yaml
 ```
 
 ## Security
