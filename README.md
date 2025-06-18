@@ -75,6 +75,7 @@ Kubernetes Network Policies provide a way to control network traffic between pod
 By default, the JupyterHub helm chart blocks access to in-cluster services from single-user pods. So no additional Network Policies are needed to blocks access to the NFS server from the single-user pods of JupyterHub. But not all the cloud providers enforce Network Policies by default.
 
 **Important considerations:**
+
 - Network Policies require a CNI that supports them (such as Calico, Cilium, or Weave Net)
 - The default CNI on some cloud providers like EKS for example do not enforce Network Policies by default.
 
