@@ -61,3 +61,15 @@ Uses legacy naming by default, switches to fullname when usePredictableNames is 
 {{- .Release.Name -}}
 {{- end -}}
 {{- end }}
+
+{{/*
+Service-specific naming to avoid double "nfs" in predictable mode
+Uses cleaner suffix when predictable names are enabled
+*/}}
+{{- define "jupyterhub-home-nfs.serviceName" -}}
+{{- if .Values.usePredictableNames -}}
+{{- include "jupyterhub-home-nfs.fullname" . -}}-service
+{{- else -}}
+{{- .Release.Name -}}-nfs-service
+{{- end -}}
+{{- end }}

@@ -1,15 +1,18 @@
-# By default, this chart uses legacy naming patterns ({{ .Release.Name }}-suffix)                                                                                  │ │
-# for backward compatibility with existing installations.                                                                                                          │ │
-#                                                                                                                                                                  │ │
-# For new installations that want predictable resource names, set:                                                                                                 │ │
-#   usePredictableNames: true                                                                                                                                      │ │
-#   fullnameOverride: "home-nfs"  # Creates resources like "home-nfs-service"                                                                                      │ │
-#                                                                                                                                                                  │ │
-# This allows for consistent service discovery across deployments:                                                                                                 │ │
-#   home-nfs-service.namespace.svc.cluster.local                                                                                                                   │ │
-#                                                                                                                                                                  │ │
-# WARNING: Enabling usePredictableNames on existing installations will create                                                                                      │ │
-# new resources with different names, potentially causing data loss or service                                                                                     │ │
+# By default, this chart uses legacy naming patterns ({{ .Release.Name }}-suffix)
+# for backward compatibility with existing installations.
+#          
+# For new installations that want predictable resource names, set:
+#   usePredictableNames: true
+#   fullnameOverride: "home-nfs"  # Creates resources like "home-nfs-service"
+#
+# This allows for consistent service discovery across deployments:
+#   home-nfs-service.namespace.svc.cluster.local
+#
+# Note: The service gets a clean "-service" suffix in predictable mode,
+# avoiding the legacy "-nfs-service" to prevent redundant naming.
+#
+# WARNING: Enabling usePredictableNames on existing installations will create
+# new resources with different names, potentially causing data loss or service
 # disruption. Only use for fresh installations. 
 nameOverride: ""
 fullnameOverride: ""
