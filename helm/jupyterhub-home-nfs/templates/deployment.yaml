@@ -2,6 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Release.Name }}-nfs-deployment
+  labels:
+    {{- include "jupyterhub-home-nfs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nfs-server
 spec:
   replicas: 1
   selector:
@@ -15,6 +18,8 @@ spec:
   template:
     metadata:
       labels:
+        {{- include "jupyterhub-home-nfs.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: nfs-server
         app: nfs-server
         # The component label is used by the shared volume free space panel
         # in jupyterhub/grafana-dashboards
