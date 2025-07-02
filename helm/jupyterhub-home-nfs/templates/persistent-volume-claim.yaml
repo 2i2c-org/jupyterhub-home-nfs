@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .Release.Name }}-nfs-home-directories-claim
+  name: {{ include "jupyterhub-home-nfs.resourceName" . }}-nfs-home-directories-claim
   labels:
     {{- include "jupyterhub-home-nfs.labels" . | nindent 4 }}
     app.kubernetes.io/component: storage

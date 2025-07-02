@@ -49,3 +49,15 @@ Selector labels
 app.kubernetes.io/name: {{ include "jupyterhub-home-nfs.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Backward compatible resource naming
+Uses legacy naming by default, switches to fullname when usePredictableNames is true
+*/}}
+{{- define "jupyterhub-home-nfs.resourceName" -}}
+{{- if .Values.usePredictableNames -}}
+{{- include "jupyterhub-home-nfs.fullname" . -}}
+{{- else -}}
+{{- .Release.Name -}}
+{{- end -}}
+{{- end }}

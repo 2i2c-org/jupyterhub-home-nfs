@@ -1,3 +1,20 @@
+# By default, this chart uses legacy naming patterns ({{ .Release.Name }}-suffix)                                                                                  │ │
+# for backward compatibility with existing installations.                                                                                                          │ │
+#                                                                                                                                                                  │ │
+# For new installations that want predictable resource names, set:                                                                                                 │ │
+#   usePredictableNames: true                                                                                                                                      │ │
+#   fullnameOverride: "home-nfs"  # Creates resources like "home-nfs-service"                                                                                      │ │
+#                                                                                                                                                                  │ │
+# This allows for consistent service discovery across deployments:                                                                                                 │ │
+#   home-nfs-service.namespace.svc.cluster.local                                                                                                                   │ │
+#                                                                                                                                                                  │ │
+# WARNING: Enabling usePredictableNames on existing installations will create                                                                                      │ │
+# new resources with different names, potentially causing data loss or service                                                                                     │ │
+# disruption. Only use for fresh installations. 
+nameOverride: ""
+fullnameOverride: ""
+usePredictableNames: false
+
 # NFS Ganesha configuration
 # NFS Ganesha is the user space NFS server that we use to serve the home directories
 
