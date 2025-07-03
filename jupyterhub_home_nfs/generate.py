@@ -104,6 +104,8 @@ def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid)
     # Sort to provide consistent ordering across runs
     homedirs = []
     for path in paths:
+        # Create the directory if it doesn't exist
+        os.makedirs(path, exist_ok=True)
         for ent in os.scandir(path):
             if ent.is_dir():
                 homedirs.append(ent.path)

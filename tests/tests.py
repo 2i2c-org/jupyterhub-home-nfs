@@ -108,6 +108,39 @@ def test_reconcile_projids():
             assert projects_contents == expected_projects_contents
 
 
+def test_missing_base_directory():
+    """
+    Test that reconcile_projfiles creates missing base directories
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create a path that doesn't exist yet
+        nonexistent_path = os.path.join(temp_dir, "nonexistent")
+
+        with (
+            tempfile.NamedTemporaryFile() as projects_file,
+            tempfile.NamedTemporaryFile() as projid_file,
+        ):
+            # This should not raise FileNotFoundError
+            reconcile_projfiles(
+                [nonexistent_path], projects_file.name, projid_file.name, 1000
+            )
+
+            # Verify the directory was created
+            assert os.path.exists(nonexistent_path)
+            assert os.path.isdir(nonexistent_path)
+
+            # Verify the files were created correctly (should be empty since no home dirs)
+            projects_file.seek(0)
+            projid_file.seek(0)
+
+            projects_contents = projects_file.read().decode()
+            projid_contents = projid_file.read().decode()
+
+            # Should be empty since no home directories were provided
+            assert projects_contents == ""
+            assert projid_contents == ""
+
+
 def test_exclude_dirs():
     """
     Test that we can exclude dirs from quota enforcement
