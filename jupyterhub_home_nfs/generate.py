@@ -293,10 +293,10 @@ class QuotaManager(Application):
             for dirname, quota_gb in self.quota_overrides.items()
         }
         reconcile_quotas(
-            self.projid_file, 
-            hard_quota_kb=hard_quota_kb, 
+            self.projid_file,
+            hard_quota_kb=hard_quota_kb,
             exclude_dirs=self.exclude,
-            quota_overrides_kb=quota_overrides_kb
+            quota_overrides_kb=quota_overrides_kb,
         )
 
     def start(self):

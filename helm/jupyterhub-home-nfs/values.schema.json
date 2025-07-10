@@ -45,7 +45,7 @@
                 "exclude": {
                   "type": "array",
                   "items": { "type": "string" }
-},
+                },
                 "quota_overrides": {
                   "type": "object",
                   "additionalProperties": { "type": "number" }

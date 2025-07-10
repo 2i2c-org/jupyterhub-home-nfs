@@ -275,17 +275,17 @@ def test_config_file():
 def test_quota_overrides():
     """Test that quota overrides work correctly with different priority levels"""
     homedirs = {"regular": 1001, "excluded": 1002, "override": 1003, "both": 1004}
-    
+
     projects_file_path = "/etc/projects"
     projid_file_path = "/etc/projid"
     base_dir = MOUNT_POINT
-    
+
     with (
         open(projects_file_path, "w+b") as projects_file,
         open(projid_file_path, "w+b") as projid_file,
     ):
         _reset_quotas(base_dir, projects_file, projid_file, list(homedirs.keys()))
-        
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py") as config_file:
             # Write test config with quota overrides
             config_content = textwrap.dedent(
@@ -301,128 +301,162 @@ def test_quota_overrides():
                 }}
                 """
             )
-            
+
             config_file.write(config_content)
             config_file.flush()
-            
+
             # Create QuotaManager instance with our config
             manager = QuotaManager()
             manager.initialize(["--config-file", config_file.name])
-            
+
             # Verify config values were loaded correctly
             assert manager.hard_quota == 0.001
             assert manager.exclude == ["excluded", "both"]
             assert manager.quota_overrides == {"override": 0.005, "both": 0.003}
-            
+
             # Apply the quotas
             manager._reconcile_projfiles()
             manager._reconcile_quotas()
-            
+
             # Check quota output to verify settings
             quota_output = subprocess.check_output(
                 ["xfs_quota", "-x", "-c", "report -N -p"]
             ).decode()
-            quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
-            
+            quota_output_lines = [
+                line for line in quota_output.split("\n") if line.strip()
+            ]
+
             # Helper function to get quota for a directory
             def get_quota_for_dir(dirname):
                 line = next(
-                    line for line in quota_output_lines 
+                    line
+                    for line in quota_output_lines
                     if line.startswith(f"{MOUNT_POINT}/{dirname}")
                 )
                 return int(line.split()[3])  # hard quota is 4th column
-            
+
             # Test quota priorities:
             # 1. "regular": should get default hard_quota (1MB = 1024KB)
             assert get_quota_for_dir("regular") == 1024
-            
+
             # 2. "excluded": should get 0 quota (excluded)
             assert get_quota_for_dir("excluded") == 0
-            
+
             # 3. "override": should get custom quota (5MB = 5120KB)
             assert get_quota_for_dir("override") == 5120
-            
+
             # 4. "both": should get override quota, NOT excluded (3MB = 3072KB)
             # This tests that quota_overrides takes priority over exclude
             assert get_quota_for_dir("both") == 3072
-            
+
             # Test actual file operations to verify quotas work
-            with tempfile.NamedTemporaryFile() as small_file, tempfile.NamedTemporaryFile() as large_file:
+            with (
+                tempfile.NamedTemporaryFile() as small_file,
+                tempfile.NamedTemporaryFile() as large_file,
+            ):
                 # Create a 2MB test file
                 small_file.write(b"0" * 2 * 1024 * 1024)
                 small_file.flush()
-                
-                # Create a 4MB test file  
+
+                # Create a 4MB test file
                 large_file.write(b"0" * 4 * 1024 * 1024)
                 large_file.flush()
-                
+
                 # Test "regular" directory (1MB quota) - should fail with 2MB file
                 with pytest.raises(subprocess.CalledProcessError):
-                    subprocess.check_output([
-                        "cp", small_file.name, os.path.join(MOUNT_POINT, "regular", "test.bin")
-                    ])
-                
+                    subprocess.check_output(
+                        [
+                            "cp",
+                            small_file.name,
+                            os.path.join(MOUNT_POINT, "regular", "test.bin"),
+                        ]
+                    )
+
                 # Test "excluded" directory (0 quota = unlimited) - should succeed with 2MB file
-                subprocess.check_output([
-                    "cp", small_file.name, os.path.join(MOUNT_POINT, "excluded", "test.bin")
-                ])
-                
+                subprocess.check_output(
+                    [
+                        "cp",
+                        small_file.name,
+                        os.path.join(MOUNT_POINT, "excluded", "test.bin"),
+                    ]
+                )
+
                 # Test "override" directory (5MB quota) - should succeed with 4MB file
-                subprocess.check_output([
-                    "cp", large_file.name, os.path.join(MOUNT_POINT, "override", "test.bin")
-                ])
-                
+                subprocess.check_output(
+                    [
+                        "cp",
+                        large_file.name,
+                        os.path.join(MOUNT_POINT, "override", "test.bin"),
+                    ]
+                )
+
                 # Test "both" directory (3MB quota due to override) - should succeed with 2MB but fail with 4MB
-                subprocess.check_output([
-                    "cp", small_file.name, os.path.join(MOUNT_POINT, "both", "test2mb.bin")
-                ])
-                
+                subprocess.check_output(
+                    [
+                        "cp",
+                        small_file.name,
+                        os.path.join(MOUNT_POINT, "both", "test2mb.bin"),
+                    ]
+                )
+
                 with pytest.raises(subprocess.CalledProcessError):
-                    subprocess.check_output([
-                        "cp", large_file.name, os.path.join(MOUNT_POINT, "both", "test4mb.bin")
-                    ])
+                    subprocess.check_output(
+                        [
+                            "cp",
+                            large_file.name,
+                            os.path.join(MOUNT_POINT, "both", "test4mb.bin"),
+                        ]
+                    )
 
 
 def test_quota_overrides_cli():
     """Test that quota overrides can be set via CLI"""
     homedirs = {"test": 1001}
-    
+
     projects_file_path = "/etc/projects"
     projid_file_path = "/etc/projid"
     base_dir = MOUNT_POINT
-    
+
     with (
         open(projects_file_path, "w+b") as projects_file,
         open(projid_file_path, "w+b") as projid_file,
     ):
         _reset_quotas(base_dir, projects_file, projid_file, list(homedirs.keys()))
-        
+
         # Test CLI override (traitlets supports dict parsing from CLI)
         manager = QuotaManager()
-        manager.initialize([
-            "--paths", base_dir,
-            "--projects-file", projects_file.name,
-            "--projid-file", projid_file.name,
-            "--hard-quota", "0.001",
-            "--quota-overrides", "{'test': 0.002}"
-        ])
-        
+        manager.initialize(
+            [
+                "--paths",
+                base_dir,
+                "--projects-file",
+                projects_file.name,
+                "--projid-file",
+                projid_file.name,
+                "--hard-quota",
+                "0.001",
+                "--quota-overrides",
+                "{'test': 0.002}",
+            ]
+        )
+
         # Verify config values
         assert manager.hard_quota == 0.001
         assert manager.quota_overrides == {"test": 0.002}
-        
+
         # Apply the quotas
         manager._reconcile_projfiles()
         manager._reconcile_quotas()
-        
+
         # Check that the override was applied (2MB = 2048KB)
         quota_output = subprocess.check_output(
             ["xfs_quota", "-x", "-c", "report -N -p"]
         ).decode()
         quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
-        
+
         test_line = next(
-            line for line in quota_output_lines 
+            line
+            for line in quota_output_lines
             if line.startswith(f"{MOUNT_POINT}/test")
         )
         assert int(test_line.split()[3]) == 2048  # 2MB in KB
