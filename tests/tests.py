@@ -35,10 +35,11 @@ def _reset_quotas(base_dir, projects_file, projid_file, homedirs):
     """
     # clear out the existing homedirs
     for d in os.listdir(base_dir):
-        # If the directory is not empty, remove 2MB.bin file in it
-        bin_file = os.path.join(base_dir, d, "2MB.bin")
-        if os.path.exists(bin_file):
-            os.remove(bin_file)
+        # If the directory is not empty, remove the *.bin files
+        # Not deleting everything in the directory to avoid accidental data loss
+        for f in os.listdir(os.path.join(base_dir, d)):
+            if f.endswith(".bin"):
+                os.remove(os.path.join(base_dir, d, f))
         os.rmdir(os.path.join(base_dir, d))
 
     # create the homedirs
@@ -336,18 +337,28 @@ def test_quota_overrides():
                 return int(line.split()[3])  # hard quota is 4th column
 
             # Test quota priorities:
-            # 1. "regular": should get default hard_quota (1MB = 1024KB)
-            assert get_quota_for_dir("regular") == 1024
+            # Note that we are converting to GiB for comparison instead of KiB because
+            # the exact KiB values in XFS quota output can vary slightly due to rounding
+            # to nearest block size, so we use GiB for consistency.
+
+            # 1. "regular": should get default hard_quota (0.001 GiB)
+            assert get_quota_for_dir("regular") / (1024 * 1024) == pytest.approx(
+                0.001, abs=0.0001
+            )
 
             # 2. "excluded": should get 0 quota (excluded)
             assert get_quota_for_dir("excluded") == 0
 
-            # 3. "override": should get custom quota (5MB = 5120KB)
-            assert get_quota_for_dir("override") == 5120
+            # 3. "override": should get custom quota (0.005 GiB)
+            assert get_quota_for_dir("override") / (1024 * 1024) == pytest.approx(
+                0.005, abs=0.0001
+            )
 
-            # 4. "both": should get override quota, NOT excluded (3MB = 3072KB)
+            # 4. "both": should get override quota, NOT excluded (0.003 GiB)
             # This tests that quota_overrides takes priority over exclude
-            assert get_quota_for_dir("both") == 3072
+            assert get_quota_for_dir("both") / (1024 * 1024) == pytest.approx(
+                0.003, abs=0.0001
+            )
 
             # Test actual file operations to verify quotas work
             with (
@@ -436,7 +447,7 @@ def test_quota_overrides_cli():
                 "--hard-quota",
                 "0.001",
                 "--quota-overrides",
-                "{'test': 0.002}",
+                "test=0.002",
             ]
         )
 
@@ -459,4 +470,6 @@ def test_quota_overrides_cli():
             for line in quota_output_lines
             if line.startswith(f"{MOUNT_POINT}/test")
         )
-        assert int(test_line.split()[3]) == 2048  # 2MB in KB
+        assert int(test_line.split()[3]) / (1024 * 1024) == pytest.approx(
+            0.002, abs=0.0001
+        ), f"Expected quota of 0.002 GiB for 'test', got {int(test_line.split()[3]) / (1024 * 1024)} GiB"
