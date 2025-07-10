@@ -32,6 +32,7 @@ quotaEnforcer:
       wait_time: 30
       min_projid: 1000
       exclude: []
+      quota_overrides: {}
 
   # The keys and values below are rendered by a k8s Secret and mounted as a .py
   # file together with quota-enforcer-config.py. These are then executed by the
