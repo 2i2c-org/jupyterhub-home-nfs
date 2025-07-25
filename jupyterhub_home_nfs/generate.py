@@ -34,7 +34,7 @@ import subprocess
 import sys
 import time
 
-from traitlets import Float, Int, List, Unicode
+from traitlets import Dict, Float, Int, List, Unicode
 from traitlets.config import Application
 
 # Line at beginning of projid / projects file stating ownership
@@ -152,7 +152,7 @@ def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid)
         )
 
 
-def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs):
+def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs, quota_overrides_kb):
     """
     Make sure each project in /etc/projid has correct hard quota set
     """
@@ -171,12 +171,19 @@ def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs):
         )
         print(f"Setting up xfs_quota project for {project}")
 
-    # If exclude_dirs is provided, set quotas to 0 for those projects,
-    # otherwise set the intended quota to hard_quota_kb
-    intended_quotas = {
-        project: (hard_quota_kb if os.path.basename(project) not in exclude_dirs else 0)
-        for project in projects
-    }
+    # Set quotas based on priority: quota_overrides > exclude_dirs > hard_quota_kb
+    intended_quotas = {}
+    for project in projects:
+        dirname = os.path.basename(project)
+        if dirname in quota_overrides_kb:
+            # Override takes highest priority
+            intended_quotas[project] = quota_overrides_kb[dirname]
+        elif dirname in exclude_dirs:
+            # Exclude means 0 quota
+            intended_quotas[project] = 0
+        else:
+            # Default quota
+            intended_quotas[project] = hard_quota_kb
 
     print(f"Intended quotas: {intended_quotas}")
 
@@ -244,6 +251,12 @@ class QuotaManager(Application):
         help="List of directory names to exclude setting quotas on",
     ).tag(config=True)
 
+    quota_overrides = Dict(
+        value_trait=Float(),
+        default_value={},
+        help="Dictionary mapping directory names to custom quota limits (in GB)",
+    ).tag(config=True)
+
     aliases = {
         "config-file": "QuotaManager.config_file",
         "paths": "QuotaManager.paths",
@@ -253,6 +266,7 @@ class QuotaManager(Application):
         "wait-time": "QuotaManager.wait_time",
         "hard-quota": "QuotaManager.hard_quota",
         "exclude": "QuotaManager.exclude",
+        "quota-overrides": "QuotaManager.quota_overrides",
     }
 
     def initialize(self, argv=None):
@@ -275,8 +289,16 @@ class QuotaManager(Application):
     def _reconcile_quotas(self):
         # Convert GB to KB for xfs_quota
         hard_quota_kb = int(self.hard_quota * 1024 * 1024)
+        # Convert quota_overrides from GB to KB
+        quota_overrides_kb = {
+            dirname: int(quota_gb * 1024 * 1024)
+            for dirname, quota_gb in self.quota_overrides.items()
+        }
         reconcile_quotas(
-            self.projid_file, hard_quota_kb=hard_quota_kb, exclude_dirs=self.exclude
+            self.projid_file,
+            hard_quota_kb=hard_quota_kb,
+            exclude_dirs=self.exclude,
+            quota_overrides_kb=quota_overrides_kb,
         )
 
     def start(self):
