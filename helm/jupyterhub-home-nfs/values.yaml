@@ -1,3 +1,23 @@
+# By default, this chart uses legacy naming patterns ({{ .Release.Name }}-suffix)
+# for backward compatibility with existing installations.
+#          
+# For new installations that want predictable resource names, set:
+#   usePredictableNames: true
+#   fullnameOverride: "home-nfs"  # Creates resources like "home-nfs-service"
+#
+# This allows for consistent service discovery across deployments:
+#   home-nfs-service.namespace.svc.cluster.local
+#
+# Note: The service gets a clean "-service" suffix in predictable mode,
+# avoiding the legacy "-nfs-service" to prevent redundant naming.
+#
+# WARNING: Enabling usePredictableNames on existing installations will create
+# new resources with different names, potentially causing data loss or service
+# disruption. Only use for fresh installations. 
+nameOverride: ""
+fullnameOverride: ""
+usePredictableNames: false
+
 # NFS Ganesha configuration
 # NFS Ganesha is the user space NFS server that we use to serve the home directories
 
@@ -60,6 +80,11 @@ prometheusExporter:
 # Persistent volume configuration
 
 persistentVolume:
+  # WARNING: Adding labels to existing PersistentVolumes may fail during upgrades
+  # as PVs are largely immutable. Only enable this for new installations or if you
+  # understand the risks. PersistentVolumeClaims receive standard labels by default
+  # as they are more tolerant of updates.
+  addStandardLabels: false
   # Setting this to 1M to make it obvious that this is not the real size.
   # The value can be changed to the actual size of the pre-provisioned disk to correctly
   # label the PV and PVC with the underlying disk size.

@@ -2,7 +2,10 @@
 
 ## [Unreleased]
 
-Future changes that are not yet released.
+### Enhancements
+
+- Added configurable predictable resource naming to improve service discovery. Set `usePredictableNames: true` and `fullnameOverride: "home-nfs"` for consistent resource names across deployments. Maintains backward compatibility with existing release-name pattern by default. In predictable mode, the service uses a clean `-service` suffix (e.g., `home-nfs-service` instead of `release-name-nfs-service`) to avoid redundant naming. This allows for consistent service discovery: `home-nfs-service.namespace.svc.cluster.local`. Fixes [#30](https://github.com/2i2c-org/jupyterhub-home-nfs/issues/30).
+- Added standard Helm labels (`app.kubernetes.io/name`, `app.kubernetes.io/instance`, `app.kubernetes.io/version`, `app.kubernetes.io/managed-by`, `helm.sh/chart`) to all Kubernetes resources for better resource management and monitoring. Fixes [#28](https://github.com/2i2c-org/jupyterhub-home-nfs/issues/28).
 
 ## v0.2.0 - 2025-04-21
 
