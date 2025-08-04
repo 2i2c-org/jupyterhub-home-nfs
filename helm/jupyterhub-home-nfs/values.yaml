@@ -6,7 +6,7 @@ nfsServer:
     repository: ghcr.io/2i2c-org/nfs-ganesha
     tag: 0.0.7
   resources: {}
-  # Whether to enable a client allowlist
+  # Whether to enable a client allow list
   # If true, only the clients in allowedClients will be allowed to access the NFS server
   # If false, all clients will be allowed to access the NFS server
   enableClientAllowlist: false

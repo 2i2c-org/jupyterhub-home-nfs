@@ -74,7 +74,7 @@ helm upgrade --cleanup-on-fail \
 ## Security
 
 > [!WARNING]  
-> By default, the NFS server is accessible from within the cluster without any authentication. It is recommended to restrict access to the NFS server by enforcing Network Policies or enabling client allowlisting to allow access only through kubelet and not from the pods directly.
+> By default, the NFS server is accessible from within the cluster without any authentication. It is recommended to restrict access to the NFS server by enforcing Network Policies or enabling a client allow list to grant access only through kubelet and not from the pods directly.
 
 ### Network Policy Enforcement
 
@@ -93,7 +93,7 @@ The documentation of Zero to JupyterHub has a [relevant section](https://z2jh.ju
 
 On GKE, Network Policies are enforced by default. So single-user pods are not allowed to access the NFS server directly and no additional action is needed to block access to the NFS server from the single-user pods of JupyterHub.
 
-But for additional security, we can enable client allowlisting in the NFS server configuration in the values.yaml file to allow access only from the IP range used by the kubelet agent on the nodes.
+But for additional security, we can enable a client allow list in the NFS server configuration in the values.yaml file to grant access only from the IP range used by the kubelet agent on the nodes.
 
 On GKE, the IP address used by the kubelet agent on the nodes is the first IP address in the node's podCIDR range. So for example, if the podCIDR range for a node is 10.120.2.0/24, the IP address used by the kubelet agent on the nodes is 10.120.2.1.
 
@@ -114,7 +114,7 @@ nfsServer:
 
 ### EKS Security Considerations
 
-On EKS, the default CNI - Amazon VPC CNI, does not enforce Network Policies. And by default Amazon VPC CNI assigns IPs to pods from the same subnet as the nodes. So there is no way to define a separate CIDR block or pattern to allow access only from the kubelet using client allowlisting.
+On EKS, the default CNI - Amazon VPC CNI, does not enforce Network Policies. And by default Amazon VPC CNI assigns IPs to pods from the same subnet as the nodes. So there is no way to define a separate CIDR block or pattern to allow access only from the kubelet using a client allow list.
 
 **Network Policy Approach:**
 Since Amazon VPC CNI [does not support enforcing Network Policies on the pods not managed by a deployment](https://docs.aws.amazon.com/eks/latest/userguide/cni-network-policy.html#cni-network-policy-considerations), you need to use an alternative CNI like [Calico](https://docs.tigera.io/calico/latest/getting-started/kubernetes/managed-public-cloud/eks). Note that Calico can be configured to use Amazon VPC CNI as the underlying network provider and it can be configured to enforce Network Policies on the pods not managed by a deployment.
