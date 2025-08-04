@@ -18,7 +18,7 @@ data:
         # Client access control options
         CLIENT
         {
-            Clients = {{ if .Values.nfsServer.enableClientWhitelist }}{{ .Values.nfsServer.allowedClients | join "," }}{{ else }}*{{ end }};
+            Clients = {{ if .Values.nfsServer.enableClientAllowlist }}{{ .Values.nfsServer.allowedClients | join "," }}{{ else }}*{{ end }};
             Access_Type = RW;
             Squash = No_Root_Squash;
             SecType = "sys";

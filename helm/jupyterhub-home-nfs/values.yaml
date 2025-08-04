@@ -6,12 +6,12 @@ nfsServer:
     repository: ghcr.io/2i2c-org/nfs-ganesha
     tag: 0.0.7
   resources: {}
-  # Whether to enable a client whitelist
+  # Whether to enable a client allowlist
   # If true, only the clients in allowedClients will be allowed to access the NFS server
   # If false, all clients will be allowed to access the NFS server
-  enableClientWhitelist: false
+  enableClientAllowlist: false
   # Clients allowed to access the NFS server
-  # Only enforced if enableClientWhitelist is true
+  # Only enforced if enableClientAllowlist is true
   # Example:
   # allowedClients:
   # - "10.128.0.0/20" # example CIDR block
