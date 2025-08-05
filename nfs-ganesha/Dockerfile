@@ -17,8 +17,6 @@ RUN DEBIAN_FRONTEND=noninteractive \
 # Add startup script
 COPY --chmod=0755 start.sh /
 
-COPY ganesha.conf /etc/ganesha/ganesha.conf
-
 # NFS ports and portmapper
 EXPOSE 2049 38465-38467 662 111/udp 111
 

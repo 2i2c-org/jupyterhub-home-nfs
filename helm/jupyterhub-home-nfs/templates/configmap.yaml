@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-ganesha-config
+data:
+  ganesha.conf: |
+    EXPORT
+    {
+        # Export Id (mandatory, each EXPORT must have a unique Export_Id)
+        Export_Id = 1;
+
+        # Exported path (mandatory)
+        Path = /export;
+
+        # Pseudo Path (for NFS v4)
+        Pseudo = /;
+
+        # Client access control options
+        CLIENT
+        {
+            Clients = {{ if .Values.nfsServer.enableClientAllowlist }}{{ .Values.nfsServer.allowedClients | join "," }}{{ else }}*{{ end }};
+            Access_Type = RW;
+            Squash = No_Root_Squash;
+            SecType = "sys";
+        }
+
+        # NFS protocol options
+        Transports = TCP;
+        Protocols = 3, 4;
+
+        SecType = "sys";
+
+        # Exporting FSAL
+        FSAL {
+            Name = VFS;
+        }
+    }
