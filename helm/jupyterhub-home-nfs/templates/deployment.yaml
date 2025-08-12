@@ -31,6 +31,7 @@ spec:
         prometheus.io/port: "9100"
         {{- end }}
         # checksum of the config file to trigger a deployment when the config changes
+        checksum/ganesha-config: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/mounted-secret: {{ include (print .Template.BasePath "/secret.yaml") . | sha256sum }}
         {{- with .Values.annotations }}
           {{- toYaml . | nindent 8 }}
@@ -51,6 +52,9 @@ spec:
         volumeMounts:
         - name: home-directories
           mountPath: /export
+        - name: ganesha-config
+          mountPath: /etc/ganesha/ganesha.conf
+          subPath: ganesha.conf
         resources: {{ toJson .Values.nfsServer.resources }}
       {{- if .Values.quotaEnforcer.enabled }}
       - name: enforce-xfs-quota
@@ -88,6 +92,9 @@ spec:
       - name: home-directories
         persistentVolumeClaim:
           claimName: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}
+      - name: ganesha-config
+        configMap:
+          name: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}-ganesha-config
       - name: quota-enforcer-config
         secret:
           secretName: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}

@@ -10,6 +10,16 @@
 
 - Added standard Helm labels (`app.kubernetes.io/name`, `app.kubernetes.io/instance`, `app.kubernetes.io/version`, `app.kubernetes.io/managed-by`, `helm.sh/chart`) to all Kubernetes resources for better resource management and monitoring. Fixes [#28](https://github.com/2i2c-org/jupyterhub-home-nfs/issues/28).
 
+- Added quota override functionality for specific folders. This allows setting custom quotas for individual folders, which is particularly useful for shared folders that may need different quota limits than regular user directories. The feature is configured via the `quota_overrides` option which maps folder names to custom quota values in GB.
+
+  ```yaml
+  quotaEnforcer:
+    config:
+      QuotaManager:
+        quota_overrides:
+          "_shared-public": 50 # Custom quota of 50 GB for the shared public folder
+  ```
+
 ## v0.2.0 - 2025-04-21
 
 ### Breaking Changes

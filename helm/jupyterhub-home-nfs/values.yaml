@@ -18,6 +18,19 @@ nfsServer:
     repository: ghcr.io/2i2c-org/nfs-ganesha
     tag: 0.0.7
   resources: {}
+  # Whether to enable a client allow list
+  # If true, only the clients in allowedClients will be allowed to access the NFS server
+  # If false, all clients will be allowed to access the NFS server
+  enableClientAllowlist: false
+  # Clients allowed to access the NFS server
+  # Only enforced if enableClientAllowlist is true
+  # Example:
+  # allowedClients:
+  # - "10.128.0.0/20" # example CIDR block
+  # - "10.120.*.1" # example IP pattern
+  # - "*" # allow all clients
+  allowedClients:
+    - "127.0.0.1" # allow localhost
 
 # Quota enforcer configuration
 # This container enforces the quota on the home directories
@@ -44,6 +57,7 @@ quotaEnforcer:
       wait_time: 30
       min_projid: 1000
       exclude: []
+      quota_overrides: {}
 
   # The keys and values below are rendered by a k8s Secret and mounted as a .py
   # file together with quota-enforcer-config.py. These are then executed by the
