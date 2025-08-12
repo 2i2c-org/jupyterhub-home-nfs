@@ -2,9 +2,12 @@
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- **BREAKING**: Switched to predictable resource naming following the z2jh pattern, borrowed from binderhub-service. Resources now append `-home-nfs` to the fullname base. When `fullnameOverride` is an empty string `""` (the default), resources are named `home-nfs` (e.g., `home-nfs` service). When `fullnameOverride` is set to a custom value like `"myjupyterhub"`, resources are named `myjupyterhub-home-nfs` (e.g., `myjupyterhub-home-nfs` service). This is a breaking change from the previous release-name based pattern. Fixes [#30](https://github.com/2i2c-org/jupyterhub-home-nfs/issues/30).
+
 ### Enhancements
 
-- Added configurable predictable resource naming to improve service discovery. Set `usePredictableNames: true` and `fullnameOverride: "home-nfs"` for consistent resource names across deployments. Maintains backward compatibility with existing release-name pattern by default. In predictable mode, the service uses a clean `-service` suffix (e.g., `home-nfs-service` instead of `release-name-nfs-service`) to avoid redundant naming. This allows for consistent service discovery: `home-nfs-service.namespace.svc.cluster.local`. Fixes [#30](https://github.com/2i2c-org/jupyterhub-home-nfs/issues/30).
 - Added standard Helm labels (`app.kubernetes.io/name`, `app.kubernetes.io/instance`, `app.kubernetes.io/version`, `app.kubernetes.io/managed-by`, `helm.sh/chart`) to all Kubernetes resources for better resource management and monitoring. Fixes [#28](https://github.com/2i2c-org/jupyterhub-home-nfs/issues/28).
 
 ## v0.2.0 - 2025-04-21

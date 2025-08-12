@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "jupyterhub-home-nfs.resourceName" . }}-nfs-deployment
+  name: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}
   labels:
     {{- include "jupyterhub-home-nfs.labels" . | nindent 4 }}
     app.kubernetes.io/component: nfs-server
@@ -87,10 +87,10 @@ spec:
       volumes:
       - name: home-directories
         persistentVolumeClaim:
-          claimName: {{ include "jupyterhub-home-nfs.resourceName" . }}-nfs-home-directories-claim
+          claimName: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}
       - name: quota-enforcer-config
         secret:
-          secretName: {{ include "jupyterhub-home-nfs.resourceName" . }}-secret
+          secretName: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

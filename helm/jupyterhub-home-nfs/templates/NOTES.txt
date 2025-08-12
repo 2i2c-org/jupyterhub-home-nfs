@@ -8,4 +8,4 @@ Using dynamic provisioning.
 {{- end }}
 
 Your NFS server is now available inside the cluster at the following address:
-{{ include "jupyterhub-home-nfs.serviceName" . }}.{{ .Release.Namespace }}.svc.cluster.local
+{{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
