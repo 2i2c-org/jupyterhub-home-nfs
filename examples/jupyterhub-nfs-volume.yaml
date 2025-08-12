@@ -10,7 +10,7 @@ spec:
     - ReadWriteMany
   nfs:
     # TODO: Replace this with the address of the in-cluster NFS server created by JupyterHub-Home-NFS
-    # server: jupyterhub-home-nfs-nfs-service.nfs-test.svc.cluster.local # <--- REPLACE WITH YOUR NFS SERVER ADDRESS
+    server: home-nfs.jupyterhub-home-nfs.svc.cluster.local # <--- REPLACE WITH YOUR NFS SERVER ADDRESS
     path: /
   mountOptions:
     - rsize=1048576

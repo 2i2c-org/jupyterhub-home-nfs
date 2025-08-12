@@ -52,7 +52,7 @@ First, we need to create a PersistentVolume and a PersistentVolumeClaim to mount
 
 ```yaml
 nfs:
-  server: jupyterhub-home-nfs-nfs-service.jupyterhub-home-nfs.svc.cluster.local
+  server: home-nfs.jupyterhub-home-nfs.svc.cluster.local
 ```
 
 And then create the PersistentVolume and the PersistentVolumeClaim using the following command:
