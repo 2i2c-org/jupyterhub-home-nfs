@@ -44,7 +44,7 @@ Please refer to the [values.yaml](helm/jupyterhub-home-nfs/values.yaml) file for
 
 ### Using the NFS server in JupyterHub
 
-Once the Helm chart is installed and running, please note the address of the NFS server. It can be found in the output of `kubectl get svc -n jupyterhub-home-nfs`.
+Once the Helm chart is installed and running, please note the address of the NFS server. You can find the service IP using the command `kubectl get svc -n jupyterhub-home-nfs`, or use the full DNS name `home-nfs.jupyterhub-home-nfs.svc.cluster.local` (following the standard Kubernetes format: <service-name>.<namespace>.svc.cluster.local)
 
 Once you have the address of the NFS server, you can use it to mount the home directories in your JupyterHub deployment using the example configuration in `examples/`.
 
