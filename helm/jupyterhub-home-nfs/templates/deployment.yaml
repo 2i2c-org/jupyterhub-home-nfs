@@ -1,7 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-nfs-deployment
+  name: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}
+  labels:
+    {{- include "jupyterhub-home-nfs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nfs-server
 spec:
   replicas: 1
   selector:
@@ -15,6 +18,8 @@ spec:
   template:
     metadata:
       labels:
+        {{- include "jupyterhub-home-nfs.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: nfs-server
         app: nfs-server
         # The component label is used by the shared volume free space panel
         # in jupyterhub/grafana-dashboards
@@ -86,13 +91,13 @@ spec:
       volumes:
       - name: home-directories
         persistentVolumeClaim:
-          claimName: {{ .Release.Name }}-nfs-home-directories-claim
+          claimName: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}
       - name: ganesha-config
         configMap:
-          name: {{ .Release.Name }}-ganesha-config
+          name: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}-ganesha-config
       - name: quota-enforcer-config
         secret:
-          secretName: {{ .Release.Name }}-secret
+          secretName: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}-ganesha-config
+  name: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}-ganesha-config
 data:
   ganesha.conf: |
     EXPORT

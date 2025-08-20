@@ -2,7 +2,13 @@
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- **BREAKING**: Switched to predictable resource naming following the z2jh pattern, borrowed from binderhub-service. Resources now append `-home-nfs` to the fullname base. When `fullnameOverride` is an empty string `""` (the default), resources are named `home-nfs` (e.g., `home-nfs` service). When `fullnameOverride` is set to a custom value like `"myjupyterhub"`, resources are named `myjupyterhub-home-nfs` (e.g., `myjupyterhub-home-nfs` service). This is a breaking change from the previous release-name based pattern. Fixes [#30](https://github.com/2i2c-org/jupyterhub-home-nfs/issues/30).
+
 ### Enhancements
+
+- Added standard Helm labels (`app.kubernetes.io/name`, `app.kubernetes.io/instance`, `app.kubernetes.io/version`, `app.kubernetes.io/managed-by`, `helm.sh/chart`) to all Kubernetes resources for better resource management and monitoring. Fixes [#28](https://github.com/2i2c-org/jupyterhub-home-nfs/issues/28).
 
 - Added quota override functionality for specific folders. This allows setting custom quotas for individual folders, which is particularly useful for shared folders that may need different quota limits than regular user directories. The feature is configured via the `quota_overrides` option which maps folder names to custom quota values in GB.
 

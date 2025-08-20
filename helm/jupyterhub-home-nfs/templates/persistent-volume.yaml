@@ -2,7 +2,12 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: {{ .Release.Name }}-nfs-home-directories-volume
+  name: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}
+  {{- if .Values.persistentVolume.addStandardLabels }}
+  labels:
+    {{- include "jupyterhub-home-nfs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+  {{- end }}
 spec:
   capacity:
     storage: {{ .Values.persistentVolume.size }}

@@ -1,3 +1,15 @@
+# Resource naming follows the z2jh pattern:
+# - When fullnameOverride is a string (including ""), use it as the base name and append "home-nfs"
+# - When fullnameOverride is not set, combine Release.Name with chart name
+#
+# Examples:
+#   fullnameOverride: ""                          -> resources named "home-nfs"
+#   fullnameOverride: "myjupyterhub"              -> resources named "myjupyterhub-home-nfs"
+#   (no fullnameOverride)                         -> resources named "{{ .Release.Name }}-home-nfs"
+#   (no fullnameOverride, nameOverride: "custom") -> resources named "{{ .Release.Name }}-custom-home-nfs"
+nameOverride: ""
+fullnameOverride: ""
+
 # NFS Ganesha configuration
 # NFS Ganesha is the user space NFS server that we use to serve the home directories
 
@@ -74,6 +86,11 @@ prometheusExporter:
 # Persistent volume configuration
 
 persistentVolume:
+  # WARNING: Adding labels to existing PersistentVolumes may fail during upgrades
+  # as PVs are largely immutable. Only enable this for new installations or if you
+  # understand the risks. PersistentVolumeClaims receive standard labels by default
+  # as they are more tolerant of updates.
+  addStandardLabels: false
   # Setting this to 1M to make it obvious that this is not the real size.
   # The value can be changed to the actual size of the pre-provisioned disk to correctly
   # label the PV and PVC with the underlying disk size.
