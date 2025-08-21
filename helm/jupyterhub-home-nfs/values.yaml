@@ -32,6 +32,12 @@ nfsServer:
   allowedClients:
     - "127.0.0.1" # allow localhost
 
+# Automatic filesystem resizer, so increases in underlying disk size
+# are immediately reflected in available file system
+autoResizer:
+  enabled: true
+  resources: {}
+
 # Quota enforcer configuration
 # This container enforces the quota on the home directories
 
