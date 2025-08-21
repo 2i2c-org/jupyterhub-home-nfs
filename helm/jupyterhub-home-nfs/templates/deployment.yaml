@@ -79,7 +79,7 @@ spec:
         - |
           while true; do
             xfs_growfs /export
-            sleep 10m
+            sleep 5m
           done
         securityContext:
           privileged: true
