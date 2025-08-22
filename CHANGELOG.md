@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.0.0] - 2025-08-22
 
 ### Breaking Changes
 
@@ -8,9 +8,9 @@
 
 ### Enhancements
 
-- Added standard Helm labels (`app.kubernetes.io/name`, `app.kubernetes.io/instance`, `app.kubernetes.io/version`, `app.kubernetes.io/managed-by`, `helm.sh/chart`) to all Kubernetes resources for better resource management and monitoring. Fixes [#28](https://github.com/2i2c-org/jupyterhub-home-nfs/issues/28).
+- Automatically resize the filesystem if necessary [#37](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/37) ([@yuvipanda](https://github.com/yuvipanda), [@GeorgianaElena](https://github.com/GeorgianaElena))
 
-- Added quota override functionality for specific folders. This allows setting custom quotas for individual folders, which is particularly useful for shared folders that may need different quota limits than regular user directories. The feature is configured via the `quota_overrides` option which maps folder names to custom quota values in GB.
+- Added quota override functionality for specific folders. This allows setting custom quotas for individual folders, which is particularly useful for shared folders that may need different quota limits than regular user directories. The feature is configured via the `quota_overrides` option which maps folder names to custom quota values in GB [#36](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/36) ([@sunu](https://github.com/sunu), [@GeorgianaElena](https://github.com/GeorgianaElena))
 
   ```yaml
   quotaEnforcer:
@@ -19,6 +19,16 @@
         quota_overrides:
           "_shared-public": 50 # Custom quota of 50 GB for the shared public folder
   ```
+
+- Fix FileNotFoundError when export directory doesn't exist [#35](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/35) ([@sunu](https://github.com/sunu), [@GeorgianaElena](https://github.com/GeorgianaElena))
+
+- Added standard Helm labels (`app.kubernetes.io/name`, `app.kubernetes.io/instance`, `app.kubernetes.io/version`, `app.kubernetes.io/managed-by`, `helm.sh/chart`) to all Kubernetes resources for better resource management and monitoring [#34](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/34) ([@sunu](https://github.com/sunu), [@GeorgianaElena](https://github.com/GeorgianaElena), [@yuvipanda](https://github.com/yuvipanda))
+
+- Change how version is parsed, move from `set-output` to use `$GITHUB_ENV`, skip publish for certain commits [#32](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/32) ([@shaneknapp](https://github.com/shaneknapp), [@sunu](https://github.com/sunu))
+
+- Add a changelog file to keep track of changes [#27](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/27) ([@sunu](https://github.com/sunu), [@sgibson91](https://github.com/sgibson91))
+
+- Optional feature to allow connections from allowed IPs only; and improved documentation for installation and security [#25](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/25) ([@sunu](https://github.com/sunu), [@GeorgianaElena](https://github.com/GeorgianaElena), [@yuvipanda](https://github.com/yuvipanda))
 
 ## v0.2.0 - 2025-04-21
 
