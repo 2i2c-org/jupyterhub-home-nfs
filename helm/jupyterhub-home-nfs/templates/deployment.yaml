@@ -69,6 +69,25 @@ spec:
           mountPath: /etc/jupyterhub-home-nfs/mounted-secret
         resources: {{ toJson .Values.quotaEnforcer.resources }}
       {{- end }}
+      {{- if .Values.autoResizer.enabled }}
+      - name: auto-xfs-resizer
+        # Use same image as quotaEnforcer as it has xfs_growfs
+        image: "{{ .Values.quotaEnforcer.image.repository }}:{{ .Values.quotaEnforcer.image.tag }}"
+        command:
+        - /bin/bash
+        - -c
+        - |
+          while true; do
+            xfs_growfs /export
+            sleep 5m
+          done
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: home-directories
+          mountPath: /export
+        resources: {{ toJson .Values.autoResizer.resources }}
+      {{- end }}
       {{- if .Values.prometheusExporter.enabled }}
       - name: metrics-exporter
         image: "{{ .Values.prometheusExporter.image.repository }}:{{ .Values.prometheusExporter.image.tag }}"

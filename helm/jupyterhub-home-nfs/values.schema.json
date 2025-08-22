@@ -17,6 +17,13 @@
       },
       "required": ["image"]
     },
+    "autoResizer": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "resources": { "type": "object" }
+      }
+    },
     "quotaEnforcer": {
       "type": "object",
       "properties": {
