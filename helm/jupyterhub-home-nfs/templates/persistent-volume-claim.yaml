@@ -14,5 +14,5 @@ spec:
       storage: {{ .Values.persistentVolume.size }}
   storageClassName: ""
   {{- if or .Values.eks.enabled .Values.gke.enabled .Values.openstack.enabled}}
-  volumeName: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}
+  volumeName: {{ .Release.Name }}-{{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}
   {{- end }}
