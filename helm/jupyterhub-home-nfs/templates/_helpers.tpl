@@ -27,7 +27,7 @@ Create chart name and version as used by the chart label.
     */}}
     {{- $fullname_override := .Values.fullnameOverride }}
     {{- $name_override := .Values.nameOverride }}
-    {{- if ne .Chart.Name "binderhub-service" }}
+    {{- if ne .Chart.Name "jupyterhub-home-nfs" }}
         {{- if .Values.jupyterhub }}
             {{- $fullname_override = .Values.jupyterhub.fullnameOverride }}
             {{- $name_override = .Values.jupyterhub.nameOverride }}
