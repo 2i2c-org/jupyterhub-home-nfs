@@ -7,11 +7,11 @@ We publish Docker images and Helm charts to GitHub Container Registry (ghcr.io) 
 To update the version:
 
 1. **Update the CHANGELOG.md**
-   - [ ] Generate a list of PRs using [github-activity](https://github.com/executablebooks/github-activity) 
-      ```
-      pip install github-activity
-      github-activity --output github-activity-output.md --since <last tag> 2i2c-org/jupyterhub-home-nfs
-      ```
+   - [ ] Generate a list of PRs using [github-activity](https://github.com/executablebooks/github-activity)
+     ```
+     pip install github-activity
+     github-activity --output github-activity-output.md --since <last tag> 2i2c-org/jupyterhub-home-nfs
+     ```
    - [ ] Visit and label all uncategorized PRs appropriately with: maintenance, enhancement, breaking, bug, or documentation or skip this and next step and categorize them manually in the changelog.
    - [ ] Generate the list of PRs again and add it to the changelog
    - [ ] Highlight breaking changes
@@ -33,7 +33,7 @@ To update the version:
    pip install tbump
    ```
 
-2. **Update Version with tbump**
+1. **Update Version with tbump**
 
    Use tbump to update the version numbers in the codebase:
 
@@ -56,7 +56,7 @@ To update the version:
    - Create a git commit
    - Create a git tag
 
-3. **Push Changes**
+1. **Push Changes**
 
    Push the changes and tag to GitHub:
 
@@ -65,7 +65,7 @@ To update the version:
    git push origin ${VERSION}
    ```
 
-4. **CI Automation**
+1. **CI Automation**
 
    Once we create a tag, the GitHub Actions workflow ([`build-publish-docker-helm.yaml`](https://github.com/2i2c-org/jupyterhub-home-nfs/blob/main/.github/workflows/build-publish-docker-helm.yaml)) will automatically:
    - Build the Docker images
@@ -73,7 +73,7 @@ To update the version:
    - Update the Helm chart with the new image tags
    - Package and publish the Helm chart to ghcr.io
 
-5. **Reset the version back to dev, e.g. 4.0.1-0.dev after releasing 4.0.0.**
+1. **Reset the version back to dev, e.g. 4.0.1-0.dev after releasing 4.0.0.**
 
    ```bash
    NEXT_VERSION=x.y.z1-0.dev
