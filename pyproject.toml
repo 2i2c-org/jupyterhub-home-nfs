@@ -36,6 +36,14 @@ regex = '''
   (?P<minor>\d+)
   \.
   (?P<patch>\d+)
+  (\-
+    (?P<prelease>
+      (
+       (alpha|beta|rc)\.\d+|
+       0\.dev
+      )
+    )
+  )?
   '''
 
 [tool.tbump.git]
@@ -53,6 +61,10 @@ search = 'version: {current_version}'
 [[tool.tbump.file]]
 src = "helm/jupyterhub-home-nfs/Chart.yaml"
 search = 'appVersion: {current_version}'
+
+[[tool.tbump.file]]
+src = "chartpress.yaml"
+search = 'baseVersion: {current_version}'
 
 [tool.isort]
 profile = "black"
