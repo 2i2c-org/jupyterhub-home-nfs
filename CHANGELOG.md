@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.0.1] - 2025-08-26
+
+([full changelog](https://github.com/2i2c-org/jupyterhub-home-nfs/compare/1.0.0...03c5049dc74cd6be237897c333ba909e869afeeb))
+
+## Bugs fixed
+
+- PV name must be unique [#38](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/38) ([@GeorgianaElena](https://github.com/GeorgianaElena), [@sunu](https://github.com/sunu))
+
+## Maintenance
+
+- Setup a baseVersion in chartpress and update release instructions [#39](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/39) ([@GeorgianaElena](https://github.com/GeorgianaElena))
+
+## Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/2i2c-org/jupyterhub-home-nfs/graphs/contributors?from=2025-08-22&to=2025-08-26&type=c))
+
+@GeorgianaElena ([activity](https://github.com/search?q=repo%3A2i2c-org%2Fjupyterhub-home-nfs+involves%3AGeorgianaElena+updated%3A2025-08-22..2025-08-26&type=Issues)) | @sunu ([activity](https://github.com/search?q=repo%3A2i2c-org%2Fjupyterhub-home-nfs+involves%3Asunu+updated%3A2025-08-22..2025-08-26&type=Issues))
+
 ## [1.0.0] - 2025-08-22
 
 ### Breaking Changes
