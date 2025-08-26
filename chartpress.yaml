@@ -1,5 +1,6 @@
 charts:
   - name: jupyterhub-home-nfs
+    baseVersion: 1.0.0-0.dev
     chartPath: helm/jupyterhub-home-nfs
     imagePrefix: ghcr.io/2i2c-org/
     repo:
