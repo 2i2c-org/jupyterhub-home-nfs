@@ -1,6 +1,5 @@
 # Changelog
 
-
 ## [1.0.1] - 2025-08-26
 
 ([full changelog](https://github.com/2i2c-org/jupyterhub-home-nfs/compare/1.0.0...03c5049dc74cd6be237897c333ba909e869afeeb))
