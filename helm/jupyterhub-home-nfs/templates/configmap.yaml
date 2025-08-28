@@ -19,6 +19,8 @@ data:
         CLIENT
         {
             Clients = {{ if .Values.nfsServer.enableClientAllowlist }}{{ .Values.nfsServer.allowedClients | join "," }}{{ else }}*{{ end }};
+            Anonymous_uid = 1000;
+            Anonymous_gid = 1000;
             Access_Type = RW;
             Squash = No_Root_Squash;
             SecType = "sys";
