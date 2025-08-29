@@ -33,6 +33,7 @@ import os
 import subprocess
 import sys
 import time
+import traceback
 
 from traitlets import Dict, Float, Int, List, Unicode
 from traitlets.config import Application
@@ -163,14 +164,6 @@ def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs, quota_overri
     quotas = get_quotas()
     print(f"Quotas: {quotas}")
 
-    # Set up xfs_quota projects for all projects in /etc/projid
-    for project in projects:
-        mountpoint = mountpoint_for(project)
-        subprocess.check_call(
-            ["xfs_quota", "-x", "-c", f"project -s {project}", mountpoint]
-        )
-        print(f"Setting up xfs_quota project for {project}")
-
     # Set quotas based on priority: quota_overrides > exclude_dirs > hard_quota_kb
     intended_quotas = {}
     for project in projects:
@@ -200,18 +193,32 @@ def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs, quota_overri
                 project not in quotas
                 or quotas[project]["hard"] != intended_quotas[project]
             ):
-                subprocess.check_call(
-                    [
-                        "xfs_quota",
-                        "-x",
-                        "-c",
-                        f"limit -p bhard={intended_quotas[project]}k {project}",
-                        mountpoint,
-                    ]
-                )
+                print(f"Setting up xfs_quota project for {project}")
+                try:
+                    subprocess.check_call(
+                        ["xfs_quota", "-x", "-c", f"project -s {project}", mountpoint]
+                    )
+                except subprocess.CalledProcessError as e:
+                    print(f"Setting up project for {project} failed! Continuing...")
+                    traceback.print_exception(e)
+                    continue
                 print(
                     f"Setting limit for project {project} to {intended_quotas[project]}k"
                 )
+                try:
+                    subprocess.check_call(
+                        [
+                            "xfs_quota",
+                            "-x",
+                            "-c",
+                            f"limit -p bhard={intended_quotas[project]}k {project}",
+                            mountpoint,
+                        ]
+                    )
+                except subprocess.CalledProcessError as e:
+                    print(f"Setting up limit for {project} failed! Continuing...")
+                    traceback.print_exception(e)
+                    continue
 
 
 class QuotaManager(Application):
