@@ -38,4 +38,8 @@ COPY ./jupyterhub_home_nfs /opt/jupyterhub-home-nfs/jupyterhub_home_nfs
 
 RUN pip install -e .
 
+# Don't buffer output, so all error logs get flushed immediately
+# Without this, exceptions may get swallowed sometime
+ENV PYTHONUNBUFFERED=1
+
 CMD ["python", "-m", "jupyterhub_home_nfs.generate"]
