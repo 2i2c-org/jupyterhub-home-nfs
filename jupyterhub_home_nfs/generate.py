@@ -133,7 +133,6 @@ def reconcile_projfiles(
                 # Ensure an entry exists in projects
                 if home not in projects:
                     projects[home] = max(projects.values() or [min_projid]) + 1
-                    projid_file_dirty = True
                     logger.debug(f"Found new project {home}")
 
         # Remove projects that don't have corresponding homedirs
