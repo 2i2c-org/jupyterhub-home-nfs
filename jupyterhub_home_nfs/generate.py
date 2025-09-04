@@ -94,7 +94,9 @@ def get_quotas():
     return quotas
 
 
-def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid):
+def reconcile_projfiles(
+    paths, projects_file_path, projid_file_path, min_projid, logger
+):
     """
     Make sure each homedir in paths has an appropriate projid entry.
 
@@ -112,11 +114,11 @@ def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid)
                 homedirs.append(ent.path)
 
     homedirs.sort()
-    print(f"homedirs: {homedirs}")
+    logger.debug(f"homedirs: {homedirs}")
 
     # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
     projects = parse_projids(projid_file_path)
-    print(f"projects: {projects}")
+    logger.debug(f"projects: {projects}")
 
     # We have to write /etc/projid & /etc/projects if they aren't completely in sync
     projid_file_dirty = sorted(list(projects.keys())) != sorted(homedirs)
@@ -132,7 +134,7 @@ def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid)
                 if home not in projects:
                     projects[home] = max(projects.values() or [min_projid]) + 1
                     projid_file_dirty = True
-                    print(f"Found new project {home}")
+                    logger.debug(f"Found new project {home}")
 
         # Remove projects that don't have corresponding homedirs
         projects = {k: v for k, v in projects.items() if k in homedirs}
@@ -148,12 +150,14 @@ def reconcile_projfiles(paths, projects_file_path, projid_file_path, min_projid)
                 projid_file.write(f"{path}:{id}\n")
                 projects_file.write(f"{id}:{path}\n")
 
-        print(
+        logger.debug(
             f"Writing projid to {projid_file_path} and projects to {projects_file_path}"
         )
 
 
-def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs, quota_overrides_kb):
+def reconcile_quotas(
+    projid_file_path, hard_quota_kb, exclude_dirs, quota_overrides_kb, logger
+):
     """
     Make sure each project in /etc/projid has correct hard quota set
     """
@@ -162,7 +166,7 @@ def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs, quota_overri
     projects = parse_projids(projid_file_path)
     # Fetch quota information from xfs_quota
     quotas = get_quotas()
-    print(f"Quotas: {quotas}")
+    logger.debug(f"Quotas: {quotas}")
 
     # Set quotas based on priority: quota_overrides > exclude_dirs > hard_quota_kb
     intended_quotas = {}
@@ -178,7 +182,7 @@ def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs, quota_overri
             # Default quota
             intended_quotas[project] = hard_quota_kb
 
-    print(f"Intended quotas: {intended_quotas}")
+    logger.debug(f"Intended quotas: {intended_quotas}")
 
     # Check for projects that don't have any nor correct quota
     changed_projects = [
@@ -193,16 +197,18 @@ def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs, quota_overri
                 project not in quotas
                 or quotas[project]["hard"] != intended_quotas[project]
             ):
-                print(f"Setting up xfs_quota project for {project}")
+                logger.info(f"Setting up xfs_quota project for {project}")
                 try:
                     subprocess.check_call(
                         ["xfs_quota", "-x", "-c", f"project -s {project}", mountpoint]
                     )
                 except subprocess.CalledProcessError as e:
-                    print(f"Setting up project for {project} failed! Continuing...")
-                    traceback.print_exception(e)
+                    logger.error(
+                        f"Setting up project for {project} failed! Continuing...",
+                        exc_info=e,
+                    )
                     continue
-                print(
+                logger.info(
                     f"Setting limit for project {project} to {intended_quotas[project]}k"
                 )
                 try:
@@ -216,8 +222,10 @@ def reconcile_quotas(projid_file_path, hard_quota_kb, exclude_dirs, quota_overri
                         ]
                     )
                 except subprocess.CalledProcessError as e:
-                    print(f"Setting up limit for {project} failed! Continuing...")
-                    traceback.print_exception(e)
+                    logger.error(
+                        f"Setting up limit for {project} failed! Continuing...",
+                        exc_info=e,
+                    )
                     continue
 
 
@@ -287,10 +295,7 @@ class QuotaManager(Application):
 
     def _reconcile_projfiles(self):
         reconcile_projfiles(
-            self.paths,
-            self.projects_file,
-            self.projid_file,
-            self.min_projid,
+            self.paths, self.projects_file, self.projid_file, self.min_projid, self.log
         )
 
     def _reconcile_quotas(self):
@@ -306,6 +311,7 @@ class QuotaManager(Application):
             hard_quota_kb=hard_quota_kb,
             exclude_dirs=self.exclude,
             quota_overrides_kb=quota_overrides_kb,
+            logger=self.log,
         )
 
     def start(self):

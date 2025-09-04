@@ -1,5 +1,6 @@
 import os
 import subprocess
+import logging
 import tempfile
 import textwrap
 from pprint import pprint  # noqa: F401
@@ -19,14 +20,18 @@ from jupyterhub_home_nfs.generate import (
 # We also use the presence of this mount point to determine if the test is running in docker
 MOUNT_POINT = "/mnt/docker-test-xfs"
 
+# Create a logger whose level prevents any nominal logging output reaching stdout
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.CRITICAL)
+
 
 @pytest.fixture(autouse=True)
 def check_mount_point():
     """Make sure we are ruuning in docker and have write access to the mount point"""
     # Make sure we have write access to /mnt/docker-test-xfs
-    assert os.access(
-        MOUNT_POINT, os.W_OK
-    ), f"This test must be run with write access to {MOUNT_POINT}"
+    assert os.access(MOUNT_POINT, os.W_OK), (
+        f"This test must be run with write access to {MOUNT_POINT}"
+    )
 
 
 def _reset_quotas(base_dir, projects_file, projid_file, homedirs):
@@ -51,8 +56,8 @@ def _reset_quotas(base_dir, projects_file, projid_file, homedirs):
     projid_file.truncate(0)
 
     # reconcile the projects and projid files
-    reconcile_projfiles([MOUNT_POINT], projects_file.name, projid_file.name, 1000)
-    reconcile_quotas(projid_file.name, 1000, [], {})
+    reconcile_projfiles([MOUNT_POINT], projects_file.name, projid_file.name, 1000, LOGGER)
+    reconcile_quotas(projid_file.name, 1000, [], {}, LOGGER)
 
 
 def test_reconcile_projids():
@@ -72,7 +77,6 @@ def test_reconcile_projids():
         tempfile.TemporaryDirectory() as base_dir,
     ):
         for homedirs in homedirs_sequence:
-
             for d in os.listdir(base_dir):
                 # using rmdir so we don't accidentally rm -rf things
                 os.rmdir(os.path.join(base_dir, d))
@@ -80,7 +84,7 @@ def test_reconcile_projids():
             for s in homedirs:
                 os.mkdir(os.path.join(base_dir, s))
 
-            reconcile_projfiles([base_dir], projects_file.name, projid_file.name, 1000)
+            reconcile_projfiles([base_dir], projects_file.name, projid_file.name, 1000, LOGGER)
 
             projects_file.flush()
             projid_file.flush()
@@ -123,7 +127,7 @@ def test_missing_base_directory():
         ):
             # This should not raise FileNotFoundError
             reconcile_projfiles(
-                [nonexistent_path], projects_file.name, projid_file.name, 1000
+                [nonexistent_path], projects_file.name, projid_file.name, 1000, LOGGER
             )
 
             # Verify the directory was created
@@ -165,28 +169,30 @@ def test_exclude_dirs():
         # remove empty lines
         quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
         # We should see 4 lines in the output: 1 for the default project, and 3 for the homedirs a, b, c
-        assert (
-            len(quota_output_lines) == 4
-        ), f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
+        assert len(quota_output_lines) == 4, (
+            f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
+        )
 
         # Check that one line starts with "/mnt/docker-test-xfs/a"
         assert any(
             line.startswith(f"{MOUNT_POINT}/a") for line in quota_output_lines
-        ), f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
+        ), (
+            f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
+        )
         # Check that the line with "/mnt/docker-test-xfs/a" has a quota of 1000 since we haven't excluded it yet
         a_line = next(
             line for line in quota_output_lines if line.startswith(f"{MOUNT_POINT}/a")
         )
-        assert (
-            len(a_line.split()) == 6
-        ), f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
-        assert (
-            a_line.split()[3] == "1000"
-        ), f"Expected quota of 1000 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
+        assert len(a_line.split()) == 6, (
+            f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
+        )
+        assert a_line.split()[3] == "1000", (
+            f"Expected quota of 1000 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
+        )
 
         # Now reconcile with exclusions
-        reconcile_projfiles([base_dir], projects_file.name, projid_file.name, 1000)
-        reconcile_quotas(projid_file.name, 1000, exclude_dirs, {})
+        reconcile_projfiles([base_dir], projects_file.name, projid_file.name, 1000, LOGGER)
+        reconcile_quotas(projid_file.name, 1000, exclude_dirs, {}, LOGGER)
 
         # Now test the output of "xfs_quota -x -c 'report -N -p'"
         # We should see the same number of projects as there are homedirs
@@ -196,24 +202,26 @@ def test_exclude_dirs():
         ).decode()
         quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
         # We should see 4 lines in the output: 1 for the default project, and 3 for the homedirs a, b, c
-        assert (
-            len(quota_output_lines) == 4
-        ), f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
+        assert len(quota_output_lines) == 4, (
+            f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
+        )
 
         # Check that one line starts with "/mnt/docker-test-xfs/a"
         assert any(
             line.startswith(f"{MOUNT_POINT}/a") for line in quota_output_lines
-        ), f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
+        ), (
+            f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
+        )
         # Check that the line with "/mnt/docker-test-xfs/a" has a quota of 0 (a quota of 0 means no quota is enforced)
         a_line = next(
             line for line in quota_output_lines if line.startswith(f"{MOUNT_POINT}/a")
         )
-        assert (
-            len(a_line.split()) == 6
-        ), f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
-        assert (
-            a_line.split()[3] == "0"
-        ), f"Expected quota of 0 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
+        assert len(a_line.split()) == 6, (
+            f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
+        )
+        assert a_line.split()[3] == "0", (
+            f"Expected quota of 0 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
+        )
 
         # Create a 2MB test file using a temporary file
         with tempfile.NamedTemporaryFile() as test_file:
@@ -247,7 +255,6 @@ def test_config_file():
         _reset_quotas(base_dir, projects_file, projid_file, list(homedirs.keys()))
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py") as config_file:
-
             # Write test config
             config_content = textwrap.dedent(
                 f"""
@@ -505,4 +512,6 @@ def test_quota_overrides_cli():
         )
         assert int(test_line.split()[3]) / (1024 * 1024) == pytest.approx(
             0.002, abs=0.0001
-        ), f"Expected quota of 0.002 GiB for 'test', got {int(test_line.split()[3]) / (1024 * 1024)} GiB"
+        ), (
+            f"Expected quota of 0.002 GiB for 'test', got {int(test_line.split()[3]) / (1024 * 1024)} GiB"
+        )
