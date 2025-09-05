@@ -30,11 +30,11 @@ This script *owns* /etc/projects and /etc/projid. If there are entries
 there that aren't put in there by this script, they will be removed!
 """
 
+import logging
 import os
 import subprocess
 import sys
 import time
-import logging
 
 from traitlets import Dict, Float, Int, List, Unicode
 from traitlets.config import Application
