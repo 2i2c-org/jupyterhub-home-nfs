@@ -156,7 +156,18 @@ class QuotaManager(Application):
         self,
     ):
         result = logged_check_call(
-            ["xfs_quota", "-x", "-c", "report -N -p"], self.log, log_stdout=False
+            [
+                "xfs_quota",
+                "-x",
+                "-c",
+                "report -N -p",
+                "-D",
+                f"{self.projects_file}",
+                "-P",
+                f"{self.projid_file}",
+            ],
+            self.log,
+            log_stdout=False,
         )
 
         quotas = {}
@@ -233,9 +244,6 @@ class QuotaManager(Application):
         elif not (
             os.path.exists(self.projects_file) or os.path.exists(self.projid_file)
         ):
-            assert not (
-                os.path.exists(self.projects_file) ^ os.path.exists(self.projid_file)
-            )
             with (
                 open(self.projects_file, "w") as projects_file,
                 open(self.projid_file, "w") as projid_file,
@@ -298,6 +306,10 @@ class QuotaManager(Application):
                                 "-x",
                                 "-c",
                                 f"project -s {project}",
+                                "-D",
+                                f"{self.projects_file}",
+                                "-P",
+                                f"{self.projid_file}",
                                 mountpoint,
                             ],
                             self.log,
@@ -318,6 +330,10 @@ class QuotaManager(Application):
                                 "-x",
                                 "-c",
                                 f"limit -p bhard={intended_quotas[project]}k {project}",
+                                "-D",
+                                f"{self.projects_file}",
+                                "-P",
+                                f"{self.projid_file}",
                                 mountpoint,
                             ],
                             self.log,
