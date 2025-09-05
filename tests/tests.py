@@ -14,8 +14,6 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.CRITICAL)
 
 MOUNT_POINT = "/mnt/docker-test-xfs"
-PROJID_PATH = "/etc/projid"
-PROJECTS_PATH = "/etc/projects"
 
 
 @pytest.fixture(autouse=True)
@@ -37,11 +35,6 @@ def cleanup_fs():
     )
     # Clean-up homes
     clear_home_directories(MOUNT_POINT)
-    # Clean up config
-    if os.path.isfile(PROJID_PATH):
-        os.unlink(PROJID_PATH)
-    if os.path.isfile(PROJECTS_PATH):
-        os.unlink(PROJECTS_PATH)
     yield
 
 
@@ -59,10 +52,10 @@ def clear_home_directories(base_dir):
 
 
 @pytest.fixture
-def quota_manager():
+def quota_manager(tmp_path):
     quota_manager = QuotaManager.instance(
-        projid_file=PROJID_PATH,
-        projects_file=PROJECTS_PATH,
+        projid_file=os.fspath(tmp_path / "projid"),
+        projects_file=os.fspath(tmp_path / "projects"),
         min_projid=1000,
         hard_quota=1000 / 1024**2,
     )
@@ -148,13 +141,17 @@ def test_exclude_dirs(quota_manager):
     create_home_directories(MOUNT_POINT, {"a": 1001, "b": 1002, "c": 1003})
     quota_manager.reconcile_step()
 
-    with open(quota_manager.projid_file, "r") as f:
-        print(f.read())
-    with open(quota_manager.projects_file, "r") as f:
-        print(f.read())
-
     quota_output = subprocess.check_output(
-        ["xfs_quota", "-x", "-c", "report -N -p"]
+        [
+            "xfs_quota",
+            "-x",
+            "-c",
+            "report -N -p",
+            "-D",
+            f"{quota_manager.projects_file}",
+            "-P",
+            f"{quota_manager.projid_file}",
+        ]
     ).decode()
     # remove empty lines
     quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
@@ -186,7 +183,16 @@ def test_exclude_dirs(quota_manager):
     # We should see the same number of projects as there are homedirs
     # and the quota should be set to the hard quota
     quota_output = subprocess.check_output(
-        ["xfs_quota", "-x", "-c", "report -N -p"]
+        [
+            "xfs_quota",
+            "-x",
+            "-c",
+            "report -N -p",
+            "-D",
+            f"{quota_manager.projects_file}",
+            "-P",
+            f"{quota_manager.projid_file}",
+        ]
     ).decode()
     quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
     # We should see 4 lines in the output: 1 for the default project, and 3 for the homedirs a, b, c
@@ -229,12 +235,14 @@ def test_exclude_dirs(quota_manager):
 def test_config_file(tmp_path):
     """Test that the traitlets config file is loaded and used correctly"""
     config_file_path = tmp_path / "config.py"
+    projects_path = os.fspath(tmp_path / "projects")
+    projid_path = os.fspath(tmp_path / "projid")
     config_file_path.write_text(
         # Write test config
         textwrap.dedent(
             f"""
-            c.QuotaManager.projects_file = {PROJECTS_PATH!r}
-            c.QuotaManager.projid_file = {PROJID_PATH!r}
+            c.QuotaManager.projects_file = {projects_path!r}
+            c.QuotaManager.projid_file = {projid_path!r}
             c.QuotaManager.paths = [{MOUNT_POINT!r}]
             c.QuotaManager.hard_quota = 0.003 # 3MB
             c.QuotaManager.exclude = ["c", "d"]
@@ -254,8 +262,8 @@ def test_config_file(tmp_path):
     assert manager.paths == [MOUNT_POINT]
     assert manager.hard_quota == 0.003
     assert manager.exclude == ["c", "d"]
-    assert manager.projects_file == PROJECTS_PATH
-    assert manager.projid_file == PROJID_PATH
+    assert manager.projects_file == projects_path
+    assert manager.projid_file == projid_path
     assert manager.quota_overrides == {
         "override": 0.005,  # 5MB custom quota
         "both": 0.003,  # 3MB custom quota (should override exclude)
@@ -269,8 +277,8 @@ def test_config_file_override(tmp_path):
         # Write test config
         textwrap.dedent(
             f"""
-            c.QuotaManager.projects_file = {PROJECTS_PATH!r}
-            c.QuotaManager.projid_file = {PROJID_PATH!r}
+            c.QuotaManager.projects_file = {os.fspath(tmp_path / "projects")!r}
+            c.QuotaManager.projid_file = {os.fspath(tmp_path / "projid")!r}
             c.QuotaManager.paths = [{MOUNT_POINT!r}]
             c.QuotaManager.hard_quota = 0.003 # 3MB
             c.QuotaManager.exclude = ["c", "d"]
@@ -332,7 +340,16 @@ def test_quota_overrides(quota_manager):
 
     # Check quota output to verify settings
     quota_output = subprocess.check_output(
-        ["xfs_quota", "-x", "-c", "report -N -p"]
+        [
+            "xfs_quota",
+            "-x",
+            "-c",
+            "report -N -p",
+            "-D",
+            f"{quota_manager.projects_file}",
+            "-P",
+            f"{quota_manager.projid_file}",
+        ]
     ).decode()
     quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
 
@@ -427,18 +444,18 @@ def test_quota_overrides(quota_manager):
             )
 
 
-def test_quota_overrides_cli():
+def test_quota_overrides_cli(tmp_path):
     """Test that quota overrides can be set via CLI"""
     # Test CLI override (traitlets supports dict parsing from CLI)
-    manager = QuotaManager()
-    manager.initialize(
+    quota_manager = QuotaManager()
+    quota_manager.initialize(
         [
             "--paths",
             MOUNT_POINT,
             "--projects-file",
-            PROJECTS_PATH,
+            os.fspath(tmp_path / "projects"),
             "--projid-file",
-            PROJID_PATH,
+            os.fspath(tmp_path / "projid"),
             "--hard-quota",
             "0.001",
             "--quota-overrides",
@@ -447,18 +464,27 @@ def test_quota_overrides_cli():
     )
 
     # Verify config values
-    assert manager.hard_quota == 0.001
-    assert manager.quota_overrides == {"test": 0.002}
+    assert quota_manager.hard_quota == 0.001
+    assert quota_manager.quota_overrides == {"test": 0.002}
 
     homedirs = {"test": 1001}
     create_home_directories(MOUNT_POINT, homedirs)
 
     # Apply the quotas
-    manager.reconcile_step()
+    quota_manager.reconcile_step()
 
     # Check that the override was applied (2MB = 2048KB)
     quota_output = subprocess.check_output(
-        ["xfs_quota", "-x", "-c", "report -N -p"]
+        [
+            "xfs_quota",
+            "-x",
+            "-c",
+            "report -N -p",
+            "-D",
+            f"{quota_manager.projects_file}",
+            "-P",
+            f"{quota_manager.projid_file}",
+        ]
     ).decode()
     quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
 
