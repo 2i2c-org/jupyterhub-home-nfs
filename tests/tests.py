@@ -9,10 +9,6 @@ import pytest
 
 from jupyterhub_home_nfs.generate import OWNERSHIP_PREAMBLE, QuotaManager
 
-# Create a logger whose level prevents any nominal logging output reaching stdout
-LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.CRITICAL)
-
 MOUNT_POINT = "/mnt/docker-test-xfs"
 
 
@@ -30,9 +26,9 @@ def cleanup_traitlet_singleton():
 def cleanup_fs():
     """Make sure we are running in Docker and have write access to the mount point"""
     # Make sure we have write access to /mnt/docker-test-xfs
-    assert os.access(
-        MOUNT_POINT, os.W_OK
-    ), f"This test must be run with write access to {MOUNT_POINT}"
+    assert os.access(MOUNT_POINT, os.W_OK), (
+        f"This test must be run with write access to {MOUNT_POINT}"
+    )
     # Clean-up homes
     clear_home_directories(MOUNT_POINT)
     yield
@@ -156,24 +152,24 @@ def test_exclude_dirs(quota_manager):
     # remove empty lines
     quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
     # We should see 4 lines in the output: 1 for the default project, and 3 for the homedirs a, b, c
-    assert (
-        len(quota_output_lines) == 4
-    ), f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
+    assert len(quota_output_lines) == 4, (
+        f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
+    )
 
     # Check that one line starts with "/mnt/docker-test-xfs/a"
-    assert any(
-        line.startswith(f"{MOUNT_POINT}/a") for line in quota_output_lines
-    ), f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
+    assert any(line.startswith(f"{MOUNT_POINT}/a") for line in quota_output_lines), (
+        f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
+    )
     # Check that the line with "/mnt/docker-test-xfs/a" has a quota of 1000 since we haven't excluded it yet
     a_line = next(
         line for line in quota_output_lines if line.startswith(f"{MOUNT_POINT}/a")
     )
-    assert (
-        len(a_line.split()) == 6
-    ), f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
-    assert (
-        a_line.split()[3] == "1000"
-    ), f"Expected quota of 1000 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
+    assert len(a_line.split()) == 6, (
+        f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
+    )
+    assert a_line.split()[3] == "1000", (
+        f"Expected quota of 1000 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
+    )
 
     # Now reconcile with exclusions
     quota_manager.exclude = ["a"]
@@ -196,24 +192,24 @@ def test_exclude_dirs(quota_manager):
     ).decode()
     quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
     # We should see 4 lines in the output: 1 for the default project, and 3 for the homedirs a, b, c
-    assert (
-        len(quota_output_lines) == 4
-    ), f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
+    assert len(quota_output_lines) == 4, (
+        f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
+    )
 
     # Check that one line starts with "/mnt/docker-test-xfs/a"
-    assert any(
-        line.startswith(f"{MOUNT_POINT}/a") for line in quota_output_lines
-    ), f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
+    assert any(line.startswith(f"{MOUNT_POINT}/a") for line in quota_output_lines), (
+        f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
+    )
     # Check that the line with "/mnt/docker-test-xfs/a" has a quota of 0 (a quota of 0 means no quota is enforced)
     a_line = next(
         line for line in quota_output_lines if line.startswith(f"{MOUNT_POINT}/a")
     )
-    assert (
-        len(a_line.split()) == 6
-    ), f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
-    assert (
-        a_line.split()[3] == "0"
-    ), f"Expected quota of 0 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
+    assert len(a_line.split()) == 6, (
+        f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
+    )
+    assert a_line.split()[3] == "0", (
+        f"Expected quota of 0 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
+    )
 
     # Create a 2MB test file using a temporary file
     with tempfile.NamedTemporaryFile() as test_file:
@@ -493,4 +489,6 @@ def test_quota_overrides_cli(tmp_path):
     )
     assert int(test_line.split()[3]) / (1024 * 1024) == pytest.approx(
         0.002, abs=0.0001
-    ), f"Expected quota of 0.002 GiB for 'test', got {int(test_line.split()[3]) / (1024 * 1024)} GiB"
+    ), (
+        f"Expected quota of 0.002 GiB for 'test', got {int(test_line.split()[3]) / (1024 * 1024)} GiB"
+    )
