@@ -20,13 +20,13 @@ mount option enabled.
 
 The script runs two reconciliation loops:
 
-1. Entries in /etc/projects & /etc/projid for all home directories in the
+1. Entries in /etc/projects & /etc/projid (or equivalent) for all home directories in the
    given paths
 2. Correct xfs_quota project & limit setup for each entry in /etc/projid
 
 This is run in a loop, and should provide fairly robust quotaing setup.
 
-This script *owns* /etc/projects and /etc/projid. If there are entries
+This script *owns* /etc/projects and /etc/projid (or equivalent). If there are entries
 there that aren't put in there by this script, they will be removed!
 """
 
@@ -187,7 +187,7 @@ class QuotaManager(Application):
         """
         Make sure each homedir in paths has an appropriate projid entry.
 
-        This 'owns' /etc/projects & /etc/projid as well. If there are extra entries there,
+        This 'owns' /etc/projects & /etc/projid (or equivalent) as well. If there are extra entries there,
         they will be removed!
         """
         # Fetch existing home directories
@@ -291,59 +291,62 @@ class QuotaManager(Application):
         ]
 
         # Adjust quotas for projects that don't the correct quota set
-        if changed_projects:
-            for project in changed_projects:
-                mountpoint = self.mountpoint_for(project)
-                if (
-                    project not in quotas
-                    or quotas[project]["hard"] != intended_quotas[project]
-                ):
-                    self.log.info(f"Setting up xfs_quota project for {project}")
-                    try:
-                        logged_check_call(
-                            [
-                                "xfs_quota",
-                                "-x",
-                                "-c",
-                                f"project -s {project}",
-                                "-D",
-                                f"{self.projects_file}",
-                                "-P",
-                                f"{self.projid_file}",
-                                mountpoint,
-                            ],
-                            self.log,
-                        )
-                    except subprocess.CalledProcessError as e:
-                        self.log.error(
-                            f"Setting up project for {project} failed! Continuing...",
-                            exc_info=e,
-                        )
-                        continue
-                    self.log.info(
-                        f"Setting limit for project {project} to {intended_quotas[project]}k"
-                    )
-                    try:
-                        logged_check_call(
-                            [
-                                "xfs_quota",
-                                "-x",
-                                "-c",
-                                f"limit -p bhard={intended_quotas[project]}k {project}",
-                                "-D",
-                                f"{self.projects_file}",
-                                "-P",
-                                f"{self.projid_file}",
-                                mountpoint,
-                            ],
-                            self.log,
-                        )
-                    except subprocess.CalledProcessError as e:
-                        self.log.error(
-                            f"Setting up limit for {project} failed! Continuing...",
-                            exc_info=e,
-                        )
-                        continue
+        if not changed_projects:
+            return
+        for project in changed_projects:
+            mountpoint = self.mountpoint_for(project)
+            if not (
+                project not in quotas
+                or quotas[project]["hard"] != intended_quotas[project]
+            ):
+                continue
+
+            self.log.info(f"Setting up xfs_quota project for {project}")
+            try:
+                logged_check_call(
+                    [
+                        "xfs_quota",
+                        "-x",
+                        "-c",
+                        f"project -s {project}",
+                        "-D",
+                        f"{self.projects_file}",
+                        "-P",
+                        f"{self.projid_file}",
+                        mountpoint,
+                    ],
+                    self.log,
+                )
+            except subprocess.CalledProcessError as e:
+                self.log.error(
+                    f"Setting up project for {project} failed! Continuing...",
+                    exc_info=e,
+                )
+                continue
+            self.log.info(
+                f"Setting limit for project {project} to {intended_quotas[project]}k"
+            )
+            try:
+                logged_check_call(
+                    [
+                        "xfs_quota",
+                        "-x",
+                        "-c",
+                        f"limit -p bhard={intended_quotas[project]}k {project}",
+                        "-D",
+                        f"{self.projects_file}",
+                        "-P",
+                        f"{self.projid_file}",
+                        mountpoint,
+                    ],
+                    self.log,
+                )
+            except subprocess.CalledProcessError as e:
+                self.log.error(
+                    f"Setting up limit for {project} failed! Continuing...",
+                    exc_info=e,
+                )
+                continue
 
     def reconcile_step(self):
         self.reconcile_projfiles()
