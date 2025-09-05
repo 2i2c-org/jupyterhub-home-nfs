@@ -29,11 +29,12 @@ This is run in a loop, and should provide fairly robust quotaing setup.
 This script *owns* /etc/projects and /etc/projid. If there are entries
 there that aren't put in there by this script, they will be removed!
 """
+
 import os
 import subprocess
 import sys
 import time
-import traceback
+import logging
 
 from traitlets import Dict, Float, Int, List, Unicode
 from traitlets.config import Application
@@ -59,29 +60,44 @@ def parse_projids(path):
     return projects
 
 
-def mountpoint_for(path):
+def write_lines_to_logger(stream, logger, level, *, encoding="utf-8"):
+    for line in stream.decode(encoding).splitlines():
+        logger.log(level, line)
+
+
+def logged_check_call(args, logger, *, log_stdout=True, log_stderr=True):
+    """
+    Run `subprocess.check_call` with a logger to output stdio.
+    """
+    result = subprocess.run(args, capture_output=True)
+    log_level = logging.ERROR if result.returncode else logging.DEBUG
+    if log_stdout:
+        write_lines_to_logger(result.stdout, logger, log_level)
+    if log_stderr:
+        write_lines_to_logger(result.stderr, logger, log_level)
+    result.check_returncode()
+    return result
+
+
+def mountpoint_for(path, logger):
     """
     Return mount point containing file / directory in path
 
     xfs_quota wants to know which fs to operate on
     """
-    return (
-        subprocess.check_output(["df", "--output=target", path])
-        .decode()
-        .strip()
-        .split("\n")[-1]
-        .strip()
+    result = logged_check_call(
+        ["df", "--output=target", path], logger, log_stdout=False
     )
+    return result.stdout.decode().strip().splitlines()[-1].strip()
 
 
-def get_quotas():
-    output = (
-        subprocess.check_output(["xfs_quota", "-x", "-c", "report -N -p"])
-        .decode()
-        .strip()
+def get_quotas(logger):
+    result = logged_check_call(
+        ["xfs_quota", "-x", "-c", "report -N -p"], logger, log_stdout=False
     )
+
     quotas = {}
-    for line in output.split("\n"):
+    for line in result.stdout.decode().strip().splitlines():
         path, used, soft, hard, warn, grace = line.split()
         # Everything here is in kb, since that's what xfs_quota reports things in
         quotas[path] = {
@@ -164,7 +180,7 @@ def reconcile_quotas(
     # Get current set of projects on disk
     projects = parse_projids(projid_file_path)
     # Fetch quota information from xfs_quota
-    quotas = get_quotas()
+    quotas = get_quotas(logger=logger)
     logger.debug(f"Quotas: {quotas}")
 
     # Set quotas based on priority: quota_overrides > exclude_dirs > hard_quota_kb
@@ -191,15 +207,16 @@ def reconcile_quotas(
     # Adjust quotas for projects that don't the correct quota set
     if changed_projects:
         for project in changed_projects:
-            mountpoint = mountpoint_for(project)
+            mountpoint = mountpoint_for(project, logger)
             if (
                 project not in quotas
                 or quotas[project]["hard"] != intended_quotas[project]
             ):
                 logger.info(f"Setting up xfs_quota project for {project}")
                 try:
-                    subprocess.check_call(
-                        ["xfs_quota", "-x", "-c", f"project -s {project}", mountpoint]
+                    logged_check_call(
+                        ["xfs_quota", "-x", "-c", f"project -s {project}", mountpoint],
+                        logger,
                     )
                 except subprocess.CalledProcessError as e:
                     logger.error(
@@ -211,14 +228,15 @@ def reconcile_quotas(
                     f"Setting limit for project {project} to {intended_quotas[project]}k"
                 )
                 try:
-                    subprocess.check_call(
+                    logged_check_call(
                         [
                             "xfs_quota",
                             "-x",
                             "-c",
                             f"limit -p bhard={intended_quotas[project]}k {project}",
                             mountpoint,
-                        ]
+                        ],
+                        logger,
                     )
                 except subprocess.CalledProcessError as e:
                     logger.error(
