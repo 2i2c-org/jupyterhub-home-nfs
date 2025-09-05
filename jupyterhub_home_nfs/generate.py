@@ -45,6 +45,23 @@ OWNERSHIP_PREAMBLE = (
 )
 
 
+def logged_check_call(args, logger, *, log_stdout=True, log_stderr=True):
+    """
+    Run `subprocess.check_call` with a logger to output stdio.
+    """
+    result = subprocess.run(args, capture_output=True)
+    log_level = logging.ERROR if result.returncode else logging.DEBUG
+
+    for line in result.stdout.decode().splitlines():
+        logger.log(log_level, line)
+
+    for line in result.stderr.decode().splitlines():
+        logger.log(log_level, line)
+
+    result.check_returncode()
+    return result
+
+
 def parse_projids(path):
     """
     Parse a projids file, returning mapping of paths to project IDs
@@ -58,192 +75,6 @@ def parse_projids(path):
                 splits = line.split(":", 2)
                 projects[splits[0]] = int(splits[1])
     return projects
-
-
-def write_lines_to_logger(stream, logger, level, *, encoding="utf-8"):
-    for line in stream.decode(encoding).splitlines():
-        logger.log(level, line)
-
-
-def logged_check_call(args, logger, *, log_stdout=True, log_stderr=True):
-    """
-    Run `subprocess.check_call` with a logger to output stdio.
-    """
-    result = subprocess.run(args, capture_output=True)
-    log_level = logging.ERROR if result.returncode else logging.DEBUG
-    if log_stdout:
-        write_lines_to_logger(result.stdout, logger, log_level)
-    if log_stderr:
-        write_lines_to_logger(result.stderr, logger, log_level)
-    result.check_returncode()
-    return result
-
-
-def mountpoint_for(path, logger):
-    """
-    Return mount point containing file / directory in path
-
-    xfs_quota wants to know which fs to operate on
-    """
-    result = logged_check_call(
-        ["df", "--output=target", path], logger, log_stdout=False
-    )
-    return result.stdout.decode().strip().splitlines()[-1].strip()
-
-
-def get_quotas(logger):
-    result = logged_check_call(
-        ["xfs_quota", "-x", "-c", "report -N -p"], logger, log_stdout=False
-    )
-
-    quotas = {}
-    for line in result.stdout.decode().strip().splitlines():
-        path, used, soft, hard, warn, grace = line.split()
-        # Everything here is in kb, since that's what xfs_quota reports things in
-        quotas[path] = {
-            "used": int(used),
-            "soft": int(soft),
-            "hard": int(hard),
-            "warn": int(warn),
-            "grace": grace,
-        }
-    return quotas
-
-
-def reconcile_projfiles(
-    paths, projects_file_path, projid_file_path, min_projid, logger
-):
-    """
-    Make sure each homedir in paths has an appropriate projid entry.
-
-    This 'owns' /etc/projets & /etc/projid as well. If there are extra entries there,
-    they will be removed!
-    """
-    # Fetch existing home directories
-    # Sort to provide consistent ordering across runs
-    homedirs = []
-    for path in paths:
-        # Create the directory if it doesn't exist
-        os.makedirs(path, exist_ok=True)
-        for ent in os.scandir(path):
-            if ent.is_dir():
-                homedirs.append(ent.path)
-
-    homedirs.sort()
-    logger.debug(f"homedirs: {homedirs}")
-
-    # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
-    projects = parse_projids(projid_file_path)
-    logger.debug(f"projects: {projects}")
-
-    # We have to write /etc/projid & /etc/projects if they aren't completely in sync
-    projid_file_dirty = sorted(list(projects.keys())) != sorted(homedirs)
-
-    if projid_file_dirty:
-        # Check if there are any homedirs that aren't in projects
-        new_homes = [h for h in homedirs if h not in projects]
-
-        # Make sure /etc/projid & /etc/projects are in sync with home dirs
-        if new_homes:
-            for home in new_homes:
-                # Ensure an entry exists in projects
-                if home not in projects:
-                    projects[home] = max(projects.values() or [min_projid]) + 1
-                    logger.debug(f"Found new project {home}")
-
-        # Remove projects that don't have corresponding homedirs
-        projects = {k: v for k, v in projects.items() if k in homedirs}
-
-        # FIXME: make this an atomic write
-        with (
-            open(projects_file_path, "w") as projects_file,
-            open(projid_file_path, "w") as projid_file,
-        ):
-            projects_file.write(OWNERSHIP_PREAMBLE)
-            projid_file.write(OWNERSHIP_PREAMBLE)
-            for path, id in projects.items():
-                projid_file.write(f"{path}:{id}\n")
-                projects_file.write(f"{id}:{path}\n")
-
-        logger.debug(
-            f"Writing projid to {projid_file_path} and projects to {projects_file_path}"
-        )
-
-
-def reconcile_quotas(
-    projid_file_path, hard_quota_kb, exclude_dirs, quota_overrides_kb, logger
-):
-    """
-    Make sure each project in /etc/projid has correct hard quota set
-    """
-
-    # Get current set of projects on disk
-    projects = parse_projids(projid_file_path)
-    # Fetch quota information from xfs_quota
-    quotas = get_quotas(logger=logger)
-    logger.debug(f"Quotas: {quotas}")
-
-    # Set quotas based on priority: quota_overrides > exclude_dirs > hard_quota_kb
-    intended_quotas = {}
-    for project in projects:
-        dirname = os.path.basename(project)
-        if dirname in quota_overrides_kb:
-            # Override takes highest priority
-            intended_quotas[project] = quota_overrides_kb[dirname]
-        elif dirname in exclude_dirs:
-            # Exclude means 0 quota
-            intended_quotas[project] = 0
-        else:
-            # Default quota
-            intended_quotas[project] = hard_quota_kb
-
-    logger.debug(f"Intended quotas: {intended_quotas}")
-
-    # Check for projects that don't have any nor correct quota
-    changed_projects = [
-        p for p in projects if quotas.get(p, {}).get("hard") != intended_quotas[p]
-    ]
-
-    # Adjust quotas for projects that don't the correct quota set
-    if changed_projects:
-        for project in changed_projects:
-            mountpoint = mountpoint_for(project, logger)
-            if (
-                project not in quotas
-                or quotas[project]["hard"] != intended_quotas[project]
-            ):
-                logger.info(f"Setting up xfs_quota project for {project}")
-                try:
-                    logged_check_call(
-                        ["xfs_quota", "-x", "-c", f"project -s {project}", mountpoint],
-                        logger,
-                    )
-                except subprocess.CalledProcessError as e:
-                    logger.error(
-                        f"Setting up project for {project} failed! Continuing...",
-                        exc_info=e,
-                    )
-                    continue
-                logger.info(
-                    f"Setting limit for project {project} to {intended_quotas[project]}k"
-                )
-                try:
-                    logged_check_call(
-                        [
-                            "xfs_quota",
-                            "-x",
-                            "-c",
-                            f"limit -p bhard={intended_quotas[project]}k {project}",
-                            mountpoint,
-                        ],
-                        logger,
-                    )
-                except subprocess.CalledProcessError as e:
-                    logger.error(
-                        f"Setting up limit for {project} failed! Continuing...",
-                        exc_info=e,
-                    )
-                    continue
 
 
 class QuotaManager(Application):
@@ -310,12 +141,112 @@ class QuotaManager(Application):
             self.log.error("No paths specified!")
             sys.exit(1)
 
-    def _reconcile_projfiles(self):
-        reconcile_projfiles(
-            self.paths, self.projects_file, self.projid_file, self.min_projid, self.log
+    def mountpoint_for(self, path):
+        """
+        Return mount point containing file / directory in path
+
+        xfs_quota wants to know which fs to operate on
+        """
+        result = logged_check_call(
+            ["df", "--output=target", path], self.log, log_stdout=False
+        )
+        return result.stdout.decode().strip().splitlines()[-1].strip()
+
+    def get_quotas(
+        self,
+    ):
+        result = logged_check_call(
+            ["xfs_quota", "-x", "-c", "report -N -p"], self.log, log_stdout=False
         )
 
-    def _reconcile_quotas(self):
+        quotas = {}
+        for line in result.stdout.decode().strip().splitlines():
+            path, used, soft, hard, warn, grace = line.split()
+            # Everything here is in kb, since that's what xfs_quota reports things in
+            quotas[path] = {
+                "used": int(used),
+                "soft": int(soft),
+                "hard": int(hard),
+                "warn": int(warn),
+                "grace": grace,
+            }
+        return quotas
+
+    def reconcile_projfiles(self):
+        """
+        Make sure each homedir in paths has an appropriate projid entry.
+
+        This 'owns' /etc/projects & /etc/projid as well. If there are extra entries there,
+        they will be removed!
+        """
+        # Fetch existing home directories
+        # Sort to provide consistent ordering across runs
+        homedirs = []
+        for path in self.paths:
+            # Create the directory if it doesn't exist
+            os.makedirs(path, exist_ok=True)
+            for ent in os.scandir(path):
+                if ent.is_dir():
+                    homedirs.append(ent.path)
+
+        homedirs.sort()
+        self.log.debug(f"homedirs: {homedirs}")
+
+        # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
+        projects = parse_projids(self.projid_file)
+        self.log.debug(f"projects: {projects}")
+
+        # We have to write /etc/projid & /etc/projects if they aren't completely in sync
+        projid_file_dirty = sorted(list(projects.keys())) != sorted(homedirs)
+
+        if projid_file_dirty:
+            # Check if there are any homedirs that aren't in projects
+            new_homes = [h for h in homedirs if h not in projects]
+
+            # Make sure /etc/projid & /etc/projects are in sync with home dirs
+            if new_homes:
+                for home in new_homes:
+                    # Ensure an entry exists in projects
+                    if home not in projects:
+                        projects[home] = max(projects.values() or [self.min_projid]) + 1
+                        self.log.debug(f"Found new project {home}")
+
+            # Remove projects that don't have corresponding homedirs
+            projects = {k: v for k, v in projects.items() if k in homedirs}
+
+            # FIXME: make this an atomic write
+            with (
+                open(self.projects_file, "w") as projects_file,
+                open(self.projid_file, "w") as projid_file,
+            ):
+                projects_file.write(OWNERSHIP_PREAMBLE)
+                projid_file.write(OWNERSHIP_PREAMBLE)
+                for path, id in projects.items():
+                    projid_file.write(f"{path}:{id}\n")
+                    projects_file.write(f"{id}:{path}\n")
+
+            self.log.debug(
+                f"Writing projid to {self.projid_file} and projects to {self.projects_file}"
+            )
+
+        # Finally, ensure we actually have these files
+        elif not (
+            os.path.exists(self.projects_file) or os.path.exists(self.projid_file)
+        ):
+            assert not (
+                os.path.exists(self.projects_file) ^ os.path.exists(self.projid_file)
+            )
+            with (
+                open(self.projects_file, "w") as projects_file,
+                open(self.projid_file, "w") as projid_file,
+            ):
+                projects_file.write(OWNERSHIP_PREAMBLE)
+                projid_file.write(OWNERSHIP_PREAMBLE)
+
+    def reconcile_quotas(self):
+        """
+        Make sure each project in /etc/projid has correct hard quota set
+        """
         # Convert GB to KB for xfs_quota
         hard_quota_kb = int(self.hard_quota * 1024 * 1024)
         # Convert quota_overrides from GB to KB
@@ -323,18 +254,88 @@ class QuotaManager(Application):
             dirname: int(quota_gb * 1024 * 1024)
             for dirname, quota_gb in self.quota_overrides.items()
         }
-        reconcile_quotas(
-            self.projid_file,
-            hard_quota_kb=hard_quota_kb,
-            exclude_dirs=self.exclude,
-            quota_overrides_kb=quota_overrides_kb,
-            logger=self.log,
-        )
+
+        # Get current set of projects on disk
+        projects = parse_projids(self.projid_file)
+        # Fetch quota information from xfs_quota
+        quotas = self.get_quotas()
+        self.log.debug(f"Quotas: {quotas}")
+
+        # Set quotas based on priority: quota_overrides > exclude_dirs > hard_quota_kb
+        intended_quotas = {}
+        for project in projects:
+            dirname = os.path.basename(project)
+            if dirname in quota_overrides_kb:
+                # Override takes highest priority
+                intended_quotas[project] = quota_overrides_kb[dirname]
+            elif dirname in self.exclude:
+                # Exclude means 0 quota
+                intended_quotas[project] = 0
+            else:
+                # Default quota
+                intended_quotas[project] = hard_quota_kb
+
+        self.log.debug(f"Intended quotas: {intended_quotas}")
+
+        # Check for projects that don't have any nor correct quota
+        changed_projects = [
+            p for p in projects if quotas.get(p, {}).get("hard") != intended_quotas[p]
+        ]
+
+        # Adjust quotas for projects that don't the correct quota set
+        if changed_projects:
+            for project in changed_projects:
+                mountpoint = self.mountpoint_for(project)
+                if (
+                    project not in quotas
+                    or quotas[project]["hard"] != intended_quotas[project]
+                ):
+                    self.log.info(f"Setting up xfs_quota project for {project}")
+                    try:
+                        logged_check_call(
+                            [
+                                "xfs_quota",
+                                "-x",
+                                "-c",
+                                f"project -s {project}",
+                                mountpoint,
+                            ],
+                            self.log,
+                        )
+                    except subprocess.CalledProcessError as e:
+                        self.log.error(
+                            f"Setting up project for {project} failed! Continuing...",
+                            exc_info=e,
+                        )
+                        continue
+                    self.log.info(
+                        f"Setting limit for project {project} to {intended_quotas[project]}k"
+                    )
+                    try:
+                        logged_check_call(
+                            [
+                                "xfs_quota",
+                                "-x",
+                                "-c",
+                                f"limit -p bhard={intended_quotas[project]}k {project}",
+                                mountpoint,
+                            ],
+                            self.log,
+                        )
+                    except subprocess.CalledProcessError as e:
+                        self.log.error(
+                            f"Setting up limit for {project} failed! Continuing...",
+                            exc_info=e,
+                        )
+                        continue
+
+    def reconcile_step(self):
+        self.reconcile_projfiles()
+        self.reconcile_quotas()
 
     def start(self):
         while True:
-            self._reconcile_projfiles()
-            self._reconcile_quotas()
+            self.reconcile_step()
             time.sleep(self.wait_time)
 
 
