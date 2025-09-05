@@ -22,7 +22,7 @@ data:
             Anonymous_uid = 1000;
             Anonymous_gid = 1000;
             Access_Type = RW;
-            Squash = No_Root_Squash;
+            Squash = All_Squash;
             SecType = "sys";
         }
 
