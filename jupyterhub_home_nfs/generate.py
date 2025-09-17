@@ -165,13 +165,11 @@ class QuotaManager(Application):
         xfs_quota wants to know which fs to operate on
         """
         result = logged_check_call(
-            ["df", "--output=target", path], self.log, log_stdout=False
+            ["df", "--output=target", os.fspath(path)], self.log, log_stdout=False
         )
         return result.stdout.decode().strip().splitlines()[-1].strip()
 
-    def get_quotas(
-        self,
-    ):
+    def get_quotas(self):
         result = logged_check_call(
             [
                 "xfs_quota",
