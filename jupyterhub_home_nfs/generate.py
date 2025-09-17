@@ -52,11 +52,13 @@ def logged_check_call(args, logger, *, log_stdout=True, log_stderr=True):
     result = subprocess.run(args, capture_output=True)
     log_level = logging.ERROR if result.returncode else logging.DEBUG
 
-    for line in result.stdout.decode().splitlines():
-        logger.log(log_level, line)
+    if log_stdout:
+        for line in result.stdout.decode().splitlines():
+            logger.log(log_level, line)
 
-    for line in result.stderr.decode().splitlines():
-        logger.log(log_level, line)
+    if log_stderr:
+        for line in result.stderr.decode().splitlines():
+            logger.log(log_level, line)
 
     result.check_returncode()
     return result
