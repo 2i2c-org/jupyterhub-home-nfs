@@ -266,13 +266,6 @@ class QuotaManager(Application):
                 projid_file.write(OWNERSHIP_PREAMBLE)
 
     def clear_existing_quotas(self):
-        with (
-            open_replace_atomic(self.projects_file) as projects_file,
-            open_replace_atomic(self.projid_file) as projid_file,
-        ):
-            projects_file.write(OWNERSHIP_PREAMBLE)
-            projid_file.write(OWNERSHIP_PREAMBLE)
-
         for path in self.paths:
             mountpoint = self.mountpoint_for(path)
             # Create a new project with ID 1, and clear it
@@ -284,9 +277,9 @@ class QuotaManager(Application):
                         "-c",
                         f"project -C -p {path} 1",
                         "-D",
-                        f"{self.projects_file}",
+                        "/dev/null",
                         "-P",
-                        f"{self.projid_file}",
+                        "/dev/null",
                         mountpoint,
                     ],
                     self.log,
