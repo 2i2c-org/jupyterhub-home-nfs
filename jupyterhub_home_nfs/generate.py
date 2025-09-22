@@ -346,7 +346,7 @@ class QuotaManager(Application):
                         "xfs_quota",
                         "-x",
                         "-c",
-                        f"limit -p bhard={intended_quotas[project]}k {project}",
+                        f"limit -p bhard={intended_quotas[project]}k bsoft=0 ihard=0 isoft=0 rtbsoft=0 rtbhard=0 {project}",
                         "-D",
                         f"{self.projects_file}",
                         "-P",
