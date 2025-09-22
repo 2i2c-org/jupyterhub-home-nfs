@@ -366,7 +366,7 @@ class QuotaManager(Application):
         self.reconcile_projfiles()
         self.reconcile_quotas(is_dirty=is_dirty)
 
-    def start(self):        # Forcibly update inodes with proper quotas
+    def start(self):  # Forcibly update inodes with proper quotas
         self.reconcile_step(is_dirty=True)
         while True:
             time.sleep(self.wait_time)
