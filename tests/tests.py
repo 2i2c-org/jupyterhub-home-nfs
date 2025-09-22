@@ -2,6 +2,7 @@ import os
 import subprocess
 import tempfile
 import textwrap
+import re
 from pprint import pprint  # noqa: F401
 
 import pytest
@@ -25,9 +26,9 @@ def cleanup_traitlet_singleton():
 def cleanup_fs():
     """Make sure we are running in Docker and have write access to the mount point"""
     # Make sure we have write access to /mnt/docker-test-xfs
-    assert os.access(
-        MOUNT_POINT, os.W_OK
-    ), f"This test must be run with write access to {MOUNT_POINT}"
+    assert os.access(MOUNT_POINT, os.W_OK), (
+        f"This test must be run with write access to {MOUNT_POINT}"
+    )
     # Clean-up homes
     clear_home_directories(MOUNT_POINT)
     yield
@@ -134,7 +135,7 @@ def test_exclude_dirs(quota_manager):
 
     # Reconcile with basic home directories
     create_home_directories(MOUNT_POINT, {"a": 1001, "b": 1002, "c": 1003})
-    quota_manager.reconcile_step()
+    quota_manager.reconcile_step(is_dirty=True)
 
     quota_output = subprocess.check_output(
         [
@@ -151,24 +152,24 @@ def test_exclude_dirs(quota_manager):
     # remove empty lines
     quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
     # We should see 4 lines in the output: 1 for the default project, and 3 for the homedirs a, b, c
-    assert (
-        len(quota_output_lines) == 4
-    ), f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
+    assert len(quota_output_lines) == 4, (
+        f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
+    )
 
     # Check that one line starts with "/mnt/docker-test-xfs/a"
-    assert any(
-        line.startswith(f"{MOUNT_POINT}/a") for line in quota_output_lines
-    ), f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
+    assert any(line.startswith(f"{MOUNT_POINT}/a") for line in quota_output_lines), (
+        f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
+    )
     # Check that the line with "/mnt/docker-test-xfs/a" has a quota of 1000 since we haven't excluded it yet
     a_line = next(
         line for line in quota_output_lines if line.startswith(f"{MOUNT_POINT}/a")
     )
-    assert (
-        len(a_line.split()) == 6
-    ), f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
-    assert (
-        a_line.split()[3] == "1000"
-    ), f"Expected quota of 1000 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
+    assert len(a_line.split()) == 6, (
+        f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
+    )
+    assert a_line.split()[3] == "1000", (
+        f"Expected quota of 1000 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
+    )
 
     # Now reconcile with exclusions
     quota_manager.exclude = ["a"]
@@ -191,24 +192,24 @@ def test_exclude_dirs(quota_manager):
     ).decode()
     quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
     # We should see 4 lines in the output: 1 for the default project, and 3 for the homedirs a, b, c
-    assert (
-        len(quota_output_lines) == 4
-    ), f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
+    assert len(quota_output_lines) == 4, (
+        f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
+    )
 
     # Check that one line starts with "/mnt/docker-test-xfs/a"
-    assert any(
-        line.startswith(f"{MOUNT_POINT}/a") for line in quota_output_lines
-    ), f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
+    assert any(line.startswith(f"{MOUNT_POINT}/a") for line in quota_output_lines), (
+        f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
+    )
     # Check that the line with "/mnt/docker-test-xfs/a" has a quota of 0 (a quota of 0 means no quota is enforced)
     a_line = next(
         line for line in quota_output_lines if line.startswith(f"{MOUNT_POINT}/a")
     )
-    assert (
-        len(a_line.split()) == 6
-    ), f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
-    assert (
-        a_line.split()[3] == "0"
-    ), f"Expected quota of 0 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
+    assert len(a_line.split()) == 6, (
+        f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
+    )
+    assert a_line.split()[3] == "0", (
+        f"Expected quota of 0 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
+    )
 
     # Create a 2MB test file using a temporary file
     with tempfile.NamedTemporaryFile() as test_file:
@@ -294,7 +295,7 @@ def test_config_file_override(tmp_path):
     homedirs = {"a": 1001, "b": 1002, "c": 1003, "d": 1004}
     create_home_directories(MOUNT_POINT, homedirs)
 
-    manager.reconcile_step()
+    manager.reconcile_step(is_dirty=True)
 
     # check that quota is enforced
     with tempfile.NamedTemporaryFile() as test_file:
@@ -331,7 +332,7 @@ def test_quota_overrides(quota_manager):
     }
 
     # Apply the quotas
-    quota_manager.reconcile_step()
+    quota_manager.reconcile_step(is_dirty=True)
 
     # Check quota output to verify settings
     quota_output = subprocess.check_output(
@@ -466,7 +467,7 @@ def test_quota_overrides_cli(tmp_path):
     create_home_directories(MOUNT_POINT, homedirs)
 
     # Apply the quotas
-    quota_manager.reconcile_step()
+    quota_manager.reconcile_step(is_dirty=True)
 
     # Check that the override was applied (2MB = 2048KB)
     quota_output = subprocess.check_output(
@@ -488,4 +489,107 @@ def test_quota_overrides_cli(tmp_path):
     )
     assert int(test_line.split()[3]) / (1024 * 1024) == pytest.approx(
         0.002, abs=0.0001
-    ), f"Expected quota of 0.002 GiB for 'test', got {int(test_line.split()[3]) / (1024 * 1024)} GiB"
+    ), (
+        f"Expected quota of 0.002 GiB for 'test', got {int(test_line.split()[3]) / (1024 * 1024)} GiB"
+    )
+
+
+def test_quota_clear(quota_manager):
+    """Test that quota clears between invocations"""
+    homedirs = {"alpha": 1001, "beta": 1002, "gamma": 1003}
+    create_home_directories(MOUNT_POINT, homedirs)
+
+    quota_manager.paths = [MOUNT_POINT]
+    quota_manager.hard_quota = 1  # 1GB
+    quota_manager.exclude = []  # both is in exclude AND override
+
+    # Apply the quotas
+    quota_manager.reconcile_step(is_dirty=True)
+
+    def get_quotas():
+        # Check that the override was applied (2MB = 2048KB)
+        quota_output = subprocess.check_output(
+            [
+                "xfs_quota",
+                "-x",
+                "-c",
+                "report -N -p -ib",
+                "-D",
+                f"{quota_manager.projects_file}",
+                "-P",
+                f"{quota_manager.projid_file}",
+            ]
+        ).decode()
+
+        return [
+            re.match(
+                r"""
+^
+# Project ID      
+(?P<project>\S*)
+# Blocks
+# Used       Soft       Hard    Warn/ Grace
+\s+(?P<fused>\d+)\s+(?P<fsoft>\d+)\s+(?P<fhard>\d+)\s+\d+\s+\[-*\]
+# INodes
+# Used       Soft       Hard    Warn/Grace           
+\s+(?P<iused>\d+)\s+(?P<isoft>\d+)\s+(?P<ihard>\d+)\s+\d+\s+\[-*\]
+$
+""",
+                line,
+                re.X,
+            ).groups()
+            for line in quota_output.split("\n")
+            if line.strip()
+        ]
+
+    assert get_quotas() == [
+        ("#0", "0", "0", "0", "3", "0", "0"),
+        ("/mnt/docker-test-xfs/alpha", "0", "0", "1048576", "1", "0", "0"),
+        ("/mnt/docker-test-xfs/beta", "0", "0", "1048576", "1", "0", "0"),
+        ("/mnt/docker-test-xfs/gamma", "0", "0", "1048576", "1", "0", "0"),
+        ("#1004", "0", "0", "1048", "0", "0", "0"),
+    ]
+
+    # Set ihard quota
+    subprocess.check_call(
+        [
+            "xfs_quota",
+            "-x",
+            "-c",
+            f"limit -p ihard=10 {MOUNT_POINT}/beta",
+            "-D",
+            f"{quota_manager.projects_file}",
+            "-P",
+            f"{quota_manager.projid_file}",
+        ]
+    )
+    assert get_quotas() == [
+        ("#0", "0", "0", "0", "3", "0", "0"),
+        ("/mnt/docker-test-xfs/alpha", "0", "0", "1048576", "1", "0", "0"),
+        # Note the change in the final item (inode hard)
+        ("/mnt/docker-test-xfs/beta", "0", "0", "1048576", "1", "0", "10"),
+        ("/mnt/docker-test-xfs/gamma", "0", "0", "1048576", "1", "0", "0"),
+        ("#1004", "0", "0", "1048", "0", "0", "0"),
+    ]
+
+    # Now setting quota won't modify -- it's not dirty
+    quota_manager.reconcile_step()
+
+    assert get_quotas() == [
+        ("#0", "0", "0", "0", "3", "0", "0"),
+        ("/mnt/docker-test-xfs/alpha", "0", "0", "1048576", "1", "0", "0"),
+        # Note the change in the final item (inode hard)
+        ("/mnt/docker-test-xfs/beta", "0", "0", "1048576", "1", "0", "10"),
+        ("/mnt/docker-test-xfs/gamma", "0", "0", "1048576", "1", "0", "0"),
+        ("#1004", "0", "0", "1048", "0", "0", "0"),
+    ]
+
+    # But tagging as dirty will rewrite
+    quota_manager.reconcile_step(is_dirty=True)
+    assert get_quotas() == [
+        ("#0", "0", "0", "0", "3", "0", "0"),
+        ("/mnt/docker-test-xfs/alpha", "0", "0", "1048576", "1", "0", "0"),
+        ("/mnt/docker-test-xfs/beta", "0", "0", "1048576", "1", "0", "0"),
+        ("/mnt/docker-test-xfs/gamma", "0", "0", "1048576", "1", "0", "0"),
+        ("#1004", "0", "0", "1048", "0", "0", "0"),
+    ]
