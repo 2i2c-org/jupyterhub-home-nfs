@@ -265,33 +265,7 @@ class QuotaManager(Application):
                 projects_file.write(OWNERSHIP_PREAMBLE)
                 projid_file.write(OWNERSHIP_PREAMBLE)
 
-    def clear_existing_quotas(self):
-        for path in self.paths:
-            mountpoint = self.mountpoint_for(path)
-            # Create a new project with ID 1, and clear it
-            try:
-                logged_check_call(
-                    [
-                        "xfs_quota",
-                        "-x",
-                        "-c",
-                        f"project -C -p {path} 1",
-                        "-D",
-                        "/dev/null",
-                        "-P",
-                        "/dev/null",
-                        mountpoint,
-                    ],
-                    self.log,
-                )
-            except subprocess.CalledProcessError as e:
-                self.log.error(
-                    f"Clearing quotas for path {path} failed! Continuing...",
-                    exc_info=e,
-                )
-                continue
-
-    def reconcile_quotas(self):
+    def reconcile_quotas(self, *, is_dirty=False):
         """
         Make sure each project in /etc/projid has correct hard quota set
         """
@@ -326,13 +300,19 @@ class QuotaManager(Application):
         self.log.debug(f"Intended quotas: {intended_quotas}")
 
         # Check for projects that don't have any nor correct quota
-        changed_projects = [
-            p for p in projects if quotas.get(p, {}).get("hard") != intended_quotas[p]
-        ]
+        if is_dirty:
+            changed_projects = [*projects]
+        else:
+            changed_projects = [
+                p
+                for p in projects
+                if quotas.get(p, {}).get("hard") != intended_quotas[p]
+            ]
 
         # Adjust quotas for projects that don't the correct quota set
         if not changed_projects:
             return
+
         for project in changed_projects:
             mountpoint = self.mountpoint_for(project)
             self.log.info(f"Setting up xfs_quota project for {project}")
@@ -382,15 +362,44 @@ class QuotaManager(Application):
                 )
                 continue
 
-    def reconcile_step(self):
+    def clear_existing_quotas(self):
+        for path in self.paths:
+            mountpoint = self.mountpoint_for(path)
+            # Create a new project with ID 1, and clear it
+            try:
+                logged_check_call(
+                    [
+                        "xfs_quota",
+                        "-x",
+                        "-c",
+                        f"project -C -p {path} 1",
+                        "-D",
+                        "/dev/null",
+                        "-P",
+                        "/dev/null",
+                        mountpoint,
+                    ],
+                    self.log,
+                )
+            except subprocess.CalledProcessError as e:
+                self.log.error(
+                    f"Clearing quotas for path {path} failed! Continuing...",
+                    exc_info=e,
+                )
+                continue
+
+    def reconcile_step(self, *, is_dirty=False):
         self.reconcile_projfiles()
-        self.reconcile_quotas()
+        self.reconcile_quotas(is_dirty=is_dirty)
 
     def start(self):
+        # Clear all inode quota information
         self.clear_existing_quotas()
+        # Forcibly update inodes with proper quotas
+        self.reconcile_step(is_dirty=True)
         while True:
-            self.reconcile_step()
             time.sleep(self.wait_time)
+            self.reconcile_step()
 
 
 def main():
