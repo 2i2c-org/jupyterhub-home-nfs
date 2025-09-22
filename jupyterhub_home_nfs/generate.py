@@ -335,12 +335,6 @@ class QuotaManager(Application):
             return
         for project in changed_projects:
             mountpoint = self.mountpoint_for(project)
-            if not (
-                project not in quotas
-                or quotas[project]["hard"] != intended_quotas[project]
-            ):
-                continue
-
             self.log.info(f"Setting up xfs_quota project for {project}")
             try:
                 logged_check_call(
