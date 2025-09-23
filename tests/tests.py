@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 import textwrap
 import re
+import itertools
 from pprint import pprint  # noqa: F401
 
 import pytest
@@ -10,6 +11,12 @@ import pytest
 from jupyterhub_home_nfs.generate import OWNERSHIP_PREAMBLE, QuotaManager
 
 MOUNT_POINT = "/mnt/docker-test-xfs"
+
+
+GIB_TO_KIB = 1024 * 1024
+# When setting limits, the value is compressed into the appropriate block number
+# By default, blocks are 4 KiB wide.
+DEFAULT_BLOCK_SIZE_KIB = 4
 
 
 @pytest.fixture(autouse=True)
@@ -49,11 +56,19 @@ def clear_home_directories(base_dir):
 
 @pytest.fixture
 def quota_manager(tmp_path):
+    """
+    Fixture to create a pre-configured QuotaManager instance.
+
+    This instance encodes the following assumptions:
+    - The minimum project ID is 1000
+    - There are no projects/profid entries
+    """
     quota_manager = QuotaManager.instance(
         projid_file=os.fspath(tmp_path / "projid"),
         projects_file=os.fspath(tmp_path / "projects"),
         min_projid=1000,
-        hard_quota=1000 / 1024**2,
+        # Ensure the value of ~1000 in the quota output
+        hard_quota=1000 / GIB_TO_KIB,
     )
     yield quota_manager
 
@@ -135,81 +150,25 @@ def test_exclude_dirs(quota_manager):
 
     # Reconcile with basic home directories
     create_home_directories(MOUNT_POINT, {"a": 1001, "b": 1002, "c": 1003})
-    quota_manager.reconcile_step(quotas_is_dirty=True)
+    quota_manager.reconcile_step()
 
-    quota_output = subprocess.check_output(
-        [
-            "xfs_quota",
-            "-x",
-            "-c",
-            "report -N -p",
-            "-D",
-            f"{quota_manager.projects_file}",
-            "-P",
-            f"{quota_manager.projid_file}",
-        ]
-    ).decode()
-    # remove empty lines
-    quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
-    # We should see 4 lines in the output: 1 for the default project, and 3 for the homedirs a, b, c
-    assert len(quota_output_lines) == 4, (
-        f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
-    )
-
-    # Check that one line starts with "/mnt/docker-test-xfs/a"
-    assert any(line.startswith(f"{MOUNT_POINT}/a") for line in quota_output_lines), (
-        f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
-    )
-    # Check that the line with "/mnt/docker-test-xfs/a" has a quota of 1000 since we haven't excluded it yet
-    a_line = next(
-        line for line in quota_output_lines if line.startswith(f"{MOUNT_POINT}/a")
-    )
-    assert len(a_line.split()) == 6, (
-        f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
-    )
-    assert a_line.split()[3] == "1000", (
-        f"Expected quota of 1000 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
-    )
+    applied_quotas = quota_manager.get_applied_quotas()
+    assert applied_quotas[os.path.join(MOUNT_POINT, "a")] == {
+        "blocks": {"soft": 0, "hard": 1000},
+        "inodes": {"soft": 0, "hard": 0},
+        "realtime": {"soft": 0, "hard": 0},
+    }
 
     # Now reconcile with exclusions
     quota_manager.exclude = ["a"]
     quota_manager.reconcile_step()
 
-    # Now test the output of "xfs_quota -x -c 'report -N -p'"
-    # We should see the same number of projects as there are homedirs
-    # and the quota should be set to the hard quota
-    quota_output = subprocess.check_output(
-        [
-            "xfs_quota",
-            "-x",
-            "-c",
-            "report -N -p",
-            "-D",
-            f"{quota_manager.projects_file}",
-            "-P",
-            f"{quota_manager.projid_file}",
-        ]
-    ).decode()
-    quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
-    # We should see 4 lines in the output: 1 for the default project, and 3 for the homedirs a, b, c
-    assert len(quota_output_lines) == 4, (
-        f"Expected 4 lines in quota output, got {len(quota_output_lines)} in {quota_output}"
-    )
-
-    # Check that one line starts with "/mnt/docker-test-xfs/a"
-    assert any(line.startswith(f"{MOUNT_POINT}/a") for line in quota_output_lines), (
-        f"Expected one line to start with '{MOUNT_POINT}/a', got {quota_output_lines}"
-    )
-    # Check that the line with "/mnt/docker-test-xfs/a" has a quota of 0 (a quota of 0 means no quota is enforced)
-    a_line = next(
-        line for line in quota_output_lines if line.startswith(f"{MOUNT_POINT}/a")
-    )
-    assert len(a_line.split()) == 6, (
-        f"Expected 6 columns in line with '{MOUNT_POINT}/a', got {len(a_line.split())} in {a_line}"
-    )
-    assert a_line.split()[3] == "0", (
-        f"Expected quota of 0 for '{MOUNT_POINT}/a', got {a_line.split()[3]}"
-    )
+    applied_quotas = quota_manager.get_applied_quotas()
+    assert applied_quotas[os.path.join(MOUNT_POINT, "a")] == {
+        "blocks": {"soft": 0, "hard": 0},
+        "inodes": {"soft": 0, "hard": 0},
+        "realtime": {"soft": 0, "hard": 0},
+    }
 
     # Create a 2MB test file using a temporary file
     with tempfile.NamedTemporaryFile() as test_file:
@@ -295,7 +254,7 @@ def test_config_file_override(tmp_path):
     homedirs = {"a": 1001, "b": 1002, "c": 1003, "d": 1004}
     create_home_directories(MOUNT_POINT, homedirs)
 
-    manager.reconcile_step(quotas_is_dirty=True)
+    manager.reconcile_step()
 
     # check that quota is enforced
     with tempfile.NamedTemporaryFile() as test_file:
@@ -332,31 +291,14 @@ def test_quota_overrides(quota_manager):
     }
 
     # Apply the quotas
-    quota_manager.reconcile_step(quotas_is_dirty=True)
+    quota_manager.reconcile_step()
 
-    # Check quota output to verify settings
-    quota_output = subprocess.check_output(
-        [
-            "xfs_quota",
-            "-x",
-            "-c",
-            "report -N -p",
-            "-D",
-            f"{quota_manager.projects_file}",
-            "-P",
-            f"{quota_manager.projid_file}",
-        ]
-    ).decode()
-    quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
+    invariant_quota = {
+        "inodes": {"soft": 0, "hard": 0},
+        "realtime": {"soft": 0, "hard": 0},
+    }
 
-    # Helper function to get quota for a directory
-    def get_quota_for_dir(dirname):
-        line = next(
-            line
-            for line in quota_output_lines
-            if line.startswith(f"{MOUNT_POINT}/{dirname}")
-        )
-        return int(line.split()[3])  # hard quota is 4th column
+    applied_quotas = quota_manager.get_applied_quotas()
 
     # Test quota priorities:
     # Note that we are converting to GiB for comparison instead of KiB because
@@ -364,21 +306,46 @@ def test_quota_overrides(quota_manager):
     # to nearest block size, so we use GiB for consistency.
 
     # 1. "regular": should get default hard_quota (0.001 GiB)
-    assert get_quota_for_dir("regular") / (1024 * 1024) == pytest.approx(
-        0.001, abs=0.0001
-    )
-
+    assert applied_quotas[os.path.join(MOUNT_POINT, "regular")] == {
+        "blocks": {
+            "soft": 0,
+            "hard":
+            # Tolerance of 4k default block size
+            pytest.approx(0.001 * GIB_TO_KIB, abs=DEFAULT_BLOCK_SIZE_KIB),
+        },
+        **invariant_quota,
+    }
     # 2. "excluded": should get 0 quota (excluded)
-    assert get_quota_for_dir("excluded") == 0
+    assert applied_quotas[os.path.join(MOUNT_POINT, "excluded")] == {
+        "blocks": {
+            "soft": 0,
+            "hard": 0,
+        },
+        **invariant_quota,
+    }
 
     # 3. "override": should get custom quota (0.005 GiB)
-    assert get_quota_for_dir("override") / (1024 * 1024) == pytest.approx(
-        0.005, abs=0.0001
-    )
+    assert applied_quotas[os.path.join(MOUNT_POINT, "override")] == {
+        "blocks": {
+            "soft": 0,
+            "hard":
+            # Tolerance of 4k default block size
+            pytest.approx(0.005 * GIB_TO_KIB, abs=DEFAULT_BLOCK_SIZE_KIB),
+        },
+        **invariant_quota,
+    }
 
     # 4. "both": should get override quota, NOT excluded (0.003 GiB)
     # This tests that quota_overrides takes priority over exclude
-    assert get_quota_for_dir("both") / (1024 * 1024) == pytest.approx(0.003, abs=0.0001)
+    assert applied_quotas[os.path.join(MOUNT_POINT, "both")] == {
+        "blocks": {
+            "soft": 0,
+            "hard":
+            # Tolerance of 4k default block size
+            pytest.approx(0.003 * GIB_TO_KIB, abs=DEFAULT_BLOCK_SIZE_KIB),
+        },
+        **invariant_quota,
+    }
 
     # Test actual file operations to verify quotas work
     with (
@@ -461,37 +428,25 @@ def test_quota_overrides_cli(tmp_path):
 
     # Verify config values
     assert quota_manager.hard_quota == 0.001
-    assert quota_manager.quota_overrides == {"test": 0.002}
+    assert quota_manager.quota_overrides == {"test": 0.002}  # GiB
 
     homedirs = {"test": 1001}
     create_home_directories(MOUNT_POINT, homedirs)
 
     # Apply the quotas
-    quota_manager.reconcile_step(quotas_is_dirty=True)
+    quota_manager.reconcile_step()
 
-    # Check that the override was applied (2MB = 2048KB)
-    quota_output = subprocess.check_output(
-        [
-            "xfs_quota",
-            "-x",
-            "-c",
-            "report -N -p",
-            "-D",
-            f"{quota_manager.projects_file}",
-            "-P",
-            f"{quota_manager.projid_file}",
-        ]
-    ).decode()
-    quota_output_lines = [line for line in quota_output.split("\n") if line.strip()]
-
-    test_line = next(
-        line for line in quota_output_lines if line.startswith(f"{MOUNT_POINT}/test")
-    )
-    assert int(test_line.split()[3]) / (1024 * 1024) == pytest.approx(
-        0.002, abs=0.0001
-    ), (
-        f"Expected quota of 0.002 GiB for 'test', got {int(test_line.split()[3]) / (1024 * 1024)} GiB"
-    )
+    applied_quotas = quota_manager.get_applied_quotas()
+    assert applied_quotas[os.path.join(MOUNT_POINT, "test")] == {
+        "blocks": {
+            "soft": 0,
+            "hard":
+            # Tolerance of 4k default block size
+            pytest.approx(0.002 * GIB_TO_KIB, abs=DEFAULT_BLOCK_SIZE_KIB),
+        },
+        "inodes": {"soft": 0, "hard": 0},
+        "realtime": {"soft": 0, "hard": 0},
+    }, "Expected quota of 0.002 GiB for 'test'"
 
 
 def test_quota_clear(quota_manager):
@@ -503,53 +458,30 @@ def test_quota_clear(quota_manager):
     quota_manager.hard_quota = 1  # 1GB
 
     # Apply the quotas
-    quota_manager.reconcile_step(quotas_is_dirty=True)
+    quota_manager.reconcile_step()
 
-    def get_quotas():
-        # Check that the override was applied (2MB = 2048KB)
-        quota_output = subprocess.check_output(
-            [
-                "xfs_quota",
-                "-x",
-                "-c",
-                "report -N -p -ib",
-                "-D",
-                f"{quota_manager.projects_file}",
-                "-P",
-                f"{quota_manager.projid_file}",
-            ]
-        ).decode()
+    # Determine the applied quotas for existing on-disk projects
+    # (Requires up-to-date projfiles)
+    applied_quotas = quota_manager.get_applied_quotas()
 
-        return [
-            re.match(
-                r"""
-^
-# Project ID      
-(?P<project>\S*)
-# Blocks
-# Used       Soft       Hard    Warn/ Grace
-\s+(?P<fused>\d+)\s+(?P<fsoft>\d+)\s+(?P<fhard>\d+)\s+\d+\s+\[-*\]
-# INodes
-# Used       Soft       Hard    Warn/Grace           
-\s+(?P<iused>\d+)\s+(?P<isoft>\d+)\s+(?P<ihard>\d+)\s+\d+\s+\[-*\]
-$
-""",
-                line,
-                re.X,
-            ).groups()
-            for line in quota_output.split("\n")
-            if line.strip()
-        ]
+    for name in homedirs:
+        path = os.path.join(MOUNT_POINT, name)
+        assert applied_quotas[path] == {
+            "blocks": {
+                "soft": 0,
+                "hard": 1048576,
+            },
+            "inodes": {
+                "soft": 0,
+                "hard": 0,
+            },
+            "realtime": {
+                "soft": 0,
+                "hard": 0,
+            },
+        }
 
-    assert get_quotas() == [
-        ("#0", "0", "0", "0", "3", "0", "0"),
-        ("/mnt/docker-test-xfs/alpha", "0", "0", "1048576", "1", "0", "0"),
-        ("/mnt/docker-test-xfs/beta", "0", "0", "1048576", "1", "0", "0"),
-        ("/mnt/docker-test-xfs/gamma", "0", "0", "1048576", "1", "0", "0"),
-        ("#1004", "0", "0", "1048", "0", "0", "0"),
-    ]
-
-    # Set ihard quota
+    # Set ihard quota in an out-of-band way (this is not intended to be preserved by jupyterhub-home-nfs)
     subprocess.check_call(
         [
             "xfs_quota",
@@ -562,33 +494,92 @@ $
             f"{quota_manager.projid_file}",
         ]
     )
-    assert get_quotas() == [
-        ("#0", "0", "0", "0", "3", "0", "0"),
-        ("/mnt/docker-test-xfs/alpha", "0", "0", "1048576", "1", "0", "0"),
-        # Note the change in the final item (inode hard)
-        ("/mnt/docker-test-xfs/beta", "0", "0", "1048576", "1", "0", "10"),
-        ("/mnt/docker-test-xfs/gamma", "0", "0", "1048576", "1", "0", "0"),
-        ("#1004", "0", "0", "1048", "0", "0", "0"),
-    ]
 
-    # Now setting quota won't modify -- it's not dirty
+    # Ensure that beta is modified
+    applied_quotas = quota_manager.get_applied_quotas()
+    path = os.path.join(MOUNT_POINT, "beta")
+    assert applied_quotas[path] == {
+        "blocks": {
+            "soft": 0,
+            "hard": 1048576,
+        },
+        "inodes": {
+            "soft": 0,
+            "hard": 10,
+        },
+        "realtime": {
+            "soft": 0,
+            "hard": 0,
+        },
+    }
+    # Ensure other directories are not
+    for name in homedirs:
+        if name == "beta":
+            continue
+        path = os.path.join(MOUNT_POINT, name)
+        assert applied_quotas[path] == {
+            "blocks": {
+                "soft": 0,
+                "hard": 1048576,
+            },
+            "inodes": {
+                "soft": 0,
+                "hard": 0,
+            },
+            "realtime": {
+                "soft": 0,
+                "hard": 0,
+            },
+        }
+
+    # Now, reconciling will forcibly update the quota by unsetting ihard
     quota_manager.reconcile_step()
 
-    assert get_quotas() == [
-        ("#0", "0", "0", "0", "3", "0", "0"),
-        ("/mnt/docker-test-xfs/alpha", "0", "0", "1048576", "1", "0", "0"),
-        # Note the change in the final item (inode hard)
-        ("/mnt/docker-test-xfs/beta", "0", "0", "1048576", "1", "0", "10"),
-        ("/mnt/docker-test-xfs/gamma", "0", "0", "1048576", "1", "0", "0"),
-        ("#1004", "0", "0", "1048", "0", "0", "0"),
-    ]
+    # Let's confirm that
+    applied_quotas = quota_manager.get_applied_quotas()
+    for name in homedirs:
+        path = os.path.join(MOUNT_POINT, name)
+        assert applied_quotas[path] == {
+            "blocks": {
+                "soft": 0,
+                "hard": 1048576,
+            },
+            "inodes": {
+                "soft": 0,
+                "hard": 0,
+            },
+            "realtime": {
+                "soft": 0,
+                "hard": 0,
+            },
+        }
 
-    # But tagging as dirty will rewrite
-    quota_manager.reconcile_step(is_dirty=True)
-    assert get_quotas() == [
-        ("#0", "0", "0", "0", "3", "0", "0"),
-        ("/mnt/docker-test-xfs/alpha", "0", "0", "1048576", "1", "0", "0"),
-        ("/mnt/docker-test-xfs/beta", "0", "0", "1048576", "1", "0", "0"),
-        ("/mnt/docker-test-xfs/gamma", "0", "0", "1048576", "1", "0", "0"),
-        ("#1004", "0", "0", "1048", "0", "0", "0"),
-    ]
+
+def test_project_clear(quota_manager):
+    """Test that project IDs clears between invocations"""
+    homedirs = {"alpha": 1001, "beta": 1002, "gamma": 1003}
+    create_home_directories(MOUNT_POINT, homedirs)
+
+    quota_manager.paths = [MOUNT_POINT]
+    quota_manager.hard_quota = 1  # 1GB
+
+    # Apply the quotas
+    quota_manager.reconcile_step()
+
+    # Check we first set proper project IDs
+    applied_projects = quota_manager.get_applied_projects()
+    for name, projid in homedirs.items():
+        path = os.path.join(MOUNT_POINT, name)
+        assert applied_projects[path] == projid
+
+    # Update min proj ID
+    quota_manager.min_projid = 2000
+
+    # Apply changes to files (forcibly update projfiles)
+    quota_manager.reconcile_step(projfiles_is_dirty=True)
+
+    # Check we see proper project IDs
+    applied_projects = quota_manager.get_applied_projects()
+    for name, projid in homedirs.items():
+        path = os.path.join(MOUNT_POINT, name)
+        assert applied_projects[path] == projid + 1000
