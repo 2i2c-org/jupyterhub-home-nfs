@@ -31,10 +31,10 @@ there that aren't put in there by this script, they will be removed!
 """
 
 import contextlib
+import itertools
 import logging
 import os
 import os.path
-import itertools
 import subprocess
 import sys
 import tempfile

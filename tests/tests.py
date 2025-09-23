@@ -1,9 +1,9 @@
+import itertools
 import os
+import re
 import subprocess
 import tempfile
 import textwrap
-import re
-import itertools
 from pprint import pprint  # noqa: F401
 
 import pytest
@@ -33,9 +33,9 @@ def cleanup_traitlet_singleton():
 def cleanup_fs():
     """Make sure we are running in Docker and have write access to the mount point"""
     # Make sure we have write access to /mnt/docker-test-xfs
-    assert os.access(MOUNT_POINT, os.W_OK), (
-        f"This test must be run with write access to {MOUNT_POINT}"
-    )
+    assert os.access(
+        MOUNT_POINT, os.W_OK
+    ), f"This test must be run with write access to {MOUNT_POINT}"
     # Clean-up homes
     clear_home_directories(MOUNT_POINT)
     yield
