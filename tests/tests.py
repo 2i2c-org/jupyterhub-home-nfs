@@ -135,7 +135,7 @@ def test_exclude_dirs(quota_manager):
 
     # Reconcile with basic home directories
     create_home_directories(MOUNT_POINT, {"a": 1001, "b": 1002, "c": 1003})
-    quota_manager.reconcile_step(is_dirty=True)
+    quota_manager.reconcile_step(quotas_is_dirty=True)
 
     quota_output = subprocess.check_output(
         [
@@ -295,7 +295,7 @@ def test_config_file_override(tmp_path):
     homedirs = {"a": 1001, "b": 1002, "c": 1003, "d": 1004}
     create_home_directories(MOUNT_POINT, homedirs)
 
-    manager.reconcile_step(is_dirty=True)
+    manager.reconcile_step(quotas_is_dirty=True)
 
     # check that quota is enforced
     with tempfile.NamedTemporaryFile() as test_file:
@@ -332,7 +332,7 @@ def test_quota_overrides(quota_manager):
     }
 
     # Apply the quotas
-    quota_manager.reconcile_step(is_dirty=True)
+    quota_manager.reconcile_step(quotas_is_dirty=True)
 
     # Check quota output to verify settings
     quota_output = subprocess.check_output(
@@ -467,7 +467,7 @@ def test_quota_overrides_cli(tmp_path):
     create_home_directories(MOUNT_POINT, homedirs)
 
     # Apply the quotas
-    quota_manager.reconcile_step(is_dirty=True)
+    quota_manager.reconcile_step(quotas_is_dirty=True)
 
     # Check that the override was applied (2MB = 2048KB)
     quota_output = subprocess.check_output(
@@ -501,10 +501,9 @@ def test_quota_clear(quota_manager):
 
     quota_manager.paths = [MOUNT_POINT]
     quota_manager.hard_quota = 1  # 1GB
-    quota_manager.exclude = []  # both is in exclude AND override
 
     # Apply the quotas
-    quota_manager.reconcile_step(is_dirty=True)
+    quota_manager.reconcile_step(quotas_is_dirty=True)
 
     def get_quotas():
         # Check that the override was applied (2MB = 2048KB)

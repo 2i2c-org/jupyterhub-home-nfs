@@ -198,7 +198,7 @@ class QuotaManager(Application):
             }
         return quotas
 
-    def reconcile_projfiles(self):
+    def reconcile_projfiles(self, *, is_dirty=False):
         """
         Make sure each homedir in paths has an appropriate projid entry.
 
@@ -218,24 +218,26 @@ class QuotaManager(Application):
         homedirs.sort()
         self.log.debug(f"homedirs: {homedirs}")
 
-        # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
-        projects = parse_projids(self.projid_file)
+        if is_dirty:
+            projects = {}
+            self.log.debug("Ignoring existing projects")
+        else:
+            # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
+            projects = parse_projids(self.projid_file)
+
         self.log.debug(f"projects: {projects}")
 
         # We have to write /etc/projid & /etc/projects if they aren't completely in sync
         projid_file_dirty = sorted(list(projects.keys())) != sorted(homedirs)
 
         if projid_file_dirty:
-            # Check if there are any homedirs that aren't in projects
-            new_homes = [h for h in homedirs if h not in projects]
-
             # Make sure /etc/projid & /etc/projects are in sync with home dirs
-            if new_homes:
-                for home in new_homes:
-                    # Ensure an entry exists in projects
-                    if home not in projects:
-                        projects[home] = max(projects.values() or [self.min_projid]) + 1
-                        self.log.debug(f"Found new project {home}")
+            for home in homedirs:
+                if home in projects:
+                    continue
+                # Ensure an entry exists in projects
+                projects[home] = max(projects.values() or [self.min_projid]) + 1
+                self.log.debug(f"Found new project {home}")
 
             # Remove projects that don't have corresponding homedirs
             projects = {k: v for k, v in projects.items() if k in homedirs}
@@ -362,12 +364,13 @@ class QuotaManager(Application):
                 )
                 continue
 
-    def reconcile_step(self, *, is_dirty=False):
-        self.reconcile_projfiles()
-        self.reconcile_quotas(is_dirty=is_dirty)
+    def reconcile_step(self, *, projfiles_is_dirty=False, quotas_is_dirty=True):
+        self.reconcile_projfiles(is_dirty=projfiles_is_dirty)
+        self.reconcile_quotas(is_dirty=quotas_is_dirty)
 
-    def start(self):  # Forcibly update inodes with proper quotas
-        self.reconcile_step(is_dirty=True)
+    def start(self):
+        # Forcibly update inodes with proper quotas
+        self.reconcile_step(quotas_is_dirty=True)
         while True:
             time.sleep(self.wait_time)
             self.reconcile_step()
