@@ -243,26 +243,27 @@ class QuotaManager(Application):
         """
         Determine existing applied project IDs
         """
-        projects = {}
-        for path in self.paths:
-            try:
-                result = logged_check_call(
-                    ["lsattr", "-p", path],
-                    self.log,
-                    log_stdout=False,
-                )
-            except subprocess.CalledProcessError as e:
-                self.log.error(
-                    f"Checking project metadata for path {path} failed! Continuing...",
-                    exc_info=e,
-                )
+        try:
+            result = logged_check_call(
+                ["lsattr", "-p", *self.paths],
+                self.log,
+                log_stdout=False,
+            )
+        except subprocess.CalledProcessError as e:
+            self.log.error(
+                f"Checking project metadata for paths {self.paths} failed! Continuing...",
+                exc_info=e,
+            )
 
-                continue
+            return {}
 
-            for line in result.stdout.decode().strip().splitlines():
-                projid, _, project_path = line.split()
-                projects[project_path] = int(projid)
-        return projects
+        return {
+            path: int(projid)
+            for projid, _, path in (
+                line.split() for line in result.stdout.decode().strip().splitlines()
+            )
+        }
+        return 
 
     def get_applied_quotas(self):
         """
