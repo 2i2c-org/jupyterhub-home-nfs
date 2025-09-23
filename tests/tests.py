@@ -1,6 +1,4 @@
-import itertools
 import os
-import re
 import subprocess
 import tempfile
 import textwrap
