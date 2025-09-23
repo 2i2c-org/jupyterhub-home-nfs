@@ -263,7 +263,7 @@ class QuotaManager(Application):
                 line.split() for line in result.stdout.decode().strip().splitlines()
             )
         }
-        return 
+        return
 
     def get_applied_quotas(self):
         """
