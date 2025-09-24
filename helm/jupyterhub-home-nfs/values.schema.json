@@ -46,6 +46,8 @@
                   "type": "array",
                   "items": { "type": "string" }
                 },
+                "projects_file": { "type": "string" },
+                "projid_file": { "type": "string" },
                 "hard_quota": { "type": "number" },
                 "wait_time": { "type": "integer" },
                 "min_projid": { "type": "integer" },
