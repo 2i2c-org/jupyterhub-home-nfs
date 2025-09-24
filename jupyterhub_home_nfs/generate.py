@@ -31,6 +31,7 @@ there that aren't put in there by this script, they will be removed!
 """
 
 import contextlib
+import itertools
 import logging
 import os
 import os.path
@@ -169,36 +170,7 @@ class QuotaManager(Application):
         )
         return result.stdout.decode().strip().splitlines()[-1].strip()
 
-    def get_quotas(self):
-        result = logged_check_call(
-            [
-                "xfs_quota",
-                "-x",
-                "-c",
-                "report -N -p",
-                "-D",
-                f"{self.projects_file}",
-                "-P",
-                f"{self.projid_file}",
-            ],
-            self.log,
-            log_stdout=False,
-        )
-
-        quotas = {}
-        for line in result.stdout.decode().strip().splitlines():
-            path, used, soft, hard, warn, grace = line.split()
-            # Everything here is in kb, since that's what xfs_quota reports things in
-            quotas[path] = {
-                "used": int(used),
-                "soft": int(soft),
-                "hard": int(hard),
-                "warn": int(warn),
-                "grace": grace,
-            }
-        return quotas
-
-    def reconcile_projfiles(self):
+    def reconcile_projfiles(self, *, is_dirty=False):
         """
         Make sure each homedir in paths has an appropriate projid entry.
 
@@ -218,24 +190,26 @@ class QuotaManager(Application):
         homedirs.sort()
         self.log.debug(f"homedirs: {homedirs}")
 
-        # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
-        projects = parse_projids(self.projid_file)
+        if is_dirty:
+            projects = {}
+            self.log.debug("Ignoring existing projects")
+        else:
+            # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
+            projects = parse_projids(self.projid_file)
+
         self.log.debug(f"projects: {projects}")
 
         # We have to write /etc/projid & /etc/projects if they aren't completely in sync
         projid_file_dirty = sorted(list(projects.keys())) != sorted(homedirs)
 
         if projid_file_dirty:
-            # Check if there are any homedirs that aren't in projects
-            new_homes = [h for h in homedirs if h not in projects]
-
             # Make sure /etc/projid & /etc/projects are in sync with home dirs
-            if new_homes:
-                for home in new_homes:
-                    # Ensure an entry exists in projects
-                    if home not in projects:
-                        projects[home] = max(projects.values() or [self.min_projid]) + 1
-                        self.log.debug(f"Found new project {home}")
+            for home in homedirs:
+                if home in projects:
+                    continue
+                # Ensure an entry exists in projects
+                projects[home] = max(projects.values() or [self.min_projid]) + 1
+                self.log.debug(f"Found new project {home}")
 
             # Remove projects that don't have corresponding homedirs
             projects = {k: v for k, v in projects.items() if k in homedirs}
@@ -265,6 +239,85 @@ class QuotaManager(Application):
                 projects_file.write(OWNERSHIP_PREAMBLE)
                 projid_file.write(OWNERSHIP_PREAMBLE)
 
+    def get_applied_projects(self):
+        """
+        Determine existing applied project IDs
+        """
+        try:
+            result = logged_check_call(
+                ["lsattr", "-p", *self.paths],
+                self.log,
+                log_stdout=False,
+            )
+        except subprocess.CalledProcessError as e:
+            self.log.error(
+                f"Checking project metadata for paths {self.paths} failed! Continuing...",
+                exc_info=e,
+            )
+
+            return {}
+
+        return {
+            path: int(projid)
+            for projid, _, path in (
+                line.split() for line in result.stdout.decode().strip().splitlines()
+            )
+        }
+        return
+
+    def get_applied_quotas(self):
+        """
+        Determine existing applied quotas
+        """
+        result = logged_check_call(
+            [
+                "xfs_quota",
+                "-x",
+                "-c",
+                "report -N -p -bir",
+                "-D",
+                f"{self.projects_file}",
+                "-P",
+                f"{self.projid_file}",
+            ],
+            self.log,
+            log_stdout=False,
+        )
+
+        # Parse a collection of quotas (e.g. blocks, inodes)
+        def parse_collection(quotas):
+            used, soft, hard, warn, grace = itertools.islice(quotas, 5)
+            return {
+                "soft": int(soft),
+                "hard": int(hard),
+            }
+
+        quotas = {}
+        for line in result.stdout.decode().strip().splitlines():
+            items = iter(line.split())
+            path = next(items)
+            blocks = parse_collection(items)
+            inodes = parse_collection(items)
+            realtime = parse_collection(items)
+            # Everything here is in kb, since that's what xfs_quota reports things in
+            quotas[path] = {"blocks": blocks, "inodes": inodes, "realtime": realtime}
+        return quotas
+
+    def quota_is_dirty(self, quotas, intended_block_quota):
+        """
+        Determine whether the filesystem quota values are dirty with respect to intended quotas
+        """
+        if quotas["blocks"]["hard"] != intended_block_quota:
+            return True
+
+        # Have any other quotas changed?
+        return any(
+            quotas[group][kind]
+            for group, kind in itertools.product(
+                ("inodes", "realtime"), ("hard", "soft")
+            )
+        )
+
     def reconcile_quotas(self, *, is_dirty=False):
         """
         Make sure each project in /etc/projid has correct hard quota set
@@ -279,9 +332,12 @@ class QuotaManager(Application):
 
         # Get current set of projects on disk
         projects = parse_projids(self.projid_file)
-        # Fetch quota information from xfs_quota
-        quotas = self.get_quotas()
-        self.log.debug(f"Quotas: {quotas}")
+
+        # Fetch quota information from filesystem
+        applied_quotas = self.get_applied_quotas()
+        applied_projects = self.get_applied_projects()
+
+        self.log.debug(f"Applied quotas: {applied_quotas}")
 
         # Set quotas based on priority: quota_overrides > exclude_dirs > hard_quota_kb
         intended_quotas = {}
@@ -299,14 +355,19 @@ class QuotaManager(Application):
 
         self.log.debug(f"Intended quotas: {intended_quotas}")
 
-        # Check for projects that don't have any nor correct quota
+        # Allow quotas to be forcibly treated as dirty
         if is_dirty:
             changed_projects = [*projects]
         else:
+            # Check for projects that don't have a correct quota
             changed_projects = [
                 p
-                for p in projects
-                if quotas.get(p, {}).get("hard") != intended_quotas[p]
+                for p, projid in projects.items()
+                # Check project ID mapping is valid
+                if applied_projects.get(p) != projid
+                # Check quotas are valid
+                or p not in applied_quotas
+                or self.quota_is_dirty(applied_quotas[p], intended_quotas[p])
             ]
 
         # Adjust quotas for projects that don't the correct quota set
@@ -337,6 +398,7 @@ class QuotaManager(Application):
                     exc_info=e,
                 )
                 continue
+
             self.log.info(
                 f"Setting limit for project {project} to {intended_quotas[project]}k"
             )
@@ -346,7 +408,7 @@ class QuotaManager(Application):
                         "xfs_quota",
                         "-x",
                         "-c",
-                        f"limit -p bhard={intended_quotas[project]}k {project}",
+                        f"limit -p bhard={intended_quotas[project]}k bsoft=0 ihard=0 isoft=0 rtbsoft=0 rtbhard=0 {project}",
                         "-D",
                         f"{self.projects_file}",
                         "-P",
@@ -362,41 +424,13 @@ class QuotaManager(Application):
                 )
                 continue
 
-    def clear_existing_quotas(self):
-        for path in self.paths:
-            mountpoint = self.mountpoint_for(path)
-            # Create a new project with ID 1, and clear it
-            try:
-                logged_check_call(
-                    [
-                        "xfs_quota",
-                        "-x",
-                        "-c",
-                        f"project -C -p {path} 1",
-                        "-D",
-                        "/dev/null",
-                        "-P",
-                        "/dev/null",
-                        mountpoint,
-                    ],
-                    self.log,
-                )
-            except subprocess.CalledProcessError as e:
-                self.log.error(
-                    f"Clearing quotas for path {path} failed! Continuing...",
-                    exc_info=e,
-                )
-                continue
-
-    def reconcile_step(self, *, is_dirty=False):
-        self.reconcile_projfiles()
-        self.reconcile_quotas(is_dirty=is_dirty)
+    def reconcile_step(self, *, projfiles_is_dirty=False, quotas_is_dirty=False):
+        self.reconcile_projfiles(is_dirty=projfiles_is_dirty)
+        self.reconcile_quotas(is_dirty=quotas_is_dirty)
 
     def start(self):
-        # Clear all inode quota information
-        self.clear_existing_quotas()
         # Forcibly update inodes with proper quotas
-        self.reconcile_step(is_dirty=True)
+        self.reconcile_step(quotas_is_dirty=True)
         while True:
             time.sleep(self.wait_time)
             self.reconcile_step()
