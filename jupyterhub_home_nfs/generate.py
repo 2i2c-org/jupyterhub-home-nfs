@@ -429,11 +429,9 @@ class QuotaManager(Application):
         self.reconcile_quotas(is_dirty=quotas_is_dirty)
 
     def start(self):
-        # Forcibly update inodes with proper quotas
-        self.reconcile_step(quotas_is_dirty=True)
         while True:
-            time.sleep(self.wait_time)
             self.reconcile_step()
+            time.sleep(self.wait_time)
 
 
 def main():
