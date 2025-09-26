@@ -133,6 +133,10 @@ def test_missing_base_directory(quota_manager, tmp_path):
     assert os.path.exists(nonexistent_path)
     assert os.path.isdir(nonexistent_path)
 
+    # Verify the directory is owned by the desired user and group 1000:1000 by default
+    state = os.stat(nonexistent_path)
+    assert (state.st_uid, state.st_gid) == (1000, 1000)
+
     # Verify the files were created correctly (should be empty since no home dirs)
     with open(quota_manager.projid_file) as f:
         assert f.read() == OWNERSHIP_PREAMBLE
