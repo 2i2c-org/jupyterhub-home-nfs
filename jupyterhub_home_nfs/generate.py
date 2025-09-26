@@ -143,7 +143,6 @@ class QuotaManager(Application):
         help="The UID that will own the home directories and initial share",
     ).tag(config=True)
 
-
     gid = Int(
         default_value=1000,
         help="The GID that will own the home directories and initial share",
