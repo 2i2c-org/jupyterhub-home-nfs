@@ -19,8 +19,8 @@ data:
         CLIENT
         {
             Clients = {{ if .Values.nfsServer.enableClientAllowlist }}{{ .Values.nfsServer.allowedClients | join "," }}{{ else }}*{{ end }};
-            Anonymous_uid = 1000;
-            Anonymous_gid = 1000;
+            Anonymous_uid = {{ .Values.quotaEnforcer.config.QuotaManager.uid }};
+            Anonymous_gid = {{ .Values.quotaEnforcer.config.QuotaManager.gid }};
             Access_Type = RW;
             Squash = All_Squash;
             SecType = "sys";

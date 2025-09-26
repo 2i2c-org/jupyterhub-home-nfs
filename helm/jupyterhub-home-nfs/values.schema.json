@@ -58,7 +58,9 @@
                 "quota_overrides": {
                   "type": "object",
                   "additionalProperties": { "type": "number" }
-                }
+                },
+                "uid": { "type": "integer" },
+                "gid": { "type": "integer" }
               },
               "required": ["paths", "hard_quota", "wait_time", "min_projid"]
             }

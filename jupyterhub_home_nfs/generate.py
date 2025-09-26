@@ -138,6 +138,17 @@ class QuotaManager(Application):
         help="Dictionary mapping directory names to custom quota limits (in GB)",
     ).tag(config=True)
 
+    uid = Int(
+        default_value=1000,
+        help="The UID that will own the home directories and initial share",
+    ).tag(config=True)
+
+
+    gid = Int(
+        default_value=1000,
+        help="The GID that will own the home directories and initial share",
+    ).tag(config=True)
+
     aliases = {
         "config-file": "QuotaManager.config_file",
         "paths": "QuotaManager.paths",
@@ -148,6 +159,8 @@ class QuotaManager(Application):
         "hard-quota": "QuotaManager.hard_quota",
         "exclude": "QuotaManager.exclude",
         "quota-overrides": "QuotaManager.quota_overrides",
+        "uid": "QuotaManager.uid",
+        "gid": "QuotaManager.gid",
     }
 
     def initialize(self, argv=None):
@@ -181,8 +194,12 @@ class QuotaManager(Application):
         # Sort to provide consistent ordering across runs
         homedirs = []
         for path in self.paths:
-            # Create the directory if it doesn't exist
-            os.makedirs(path, exist_ok=True)
+            # Create the directory if it doesn't exist and make sure is owned by uid:gid
+            try:
+                os.makedirs(path)
+                os.chown(path, self.uid, self.gid)
+            except:
+                pass
             for ent in os.scandir(path):
                 if ent.is_dir():
                     homedirs.append(ent.path)
