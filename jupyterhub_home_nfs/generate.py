@@ -194,11 +194,8 @@ class QuotaManager(Application):
         homedirs = []
         for path in self.paths:
             # Create the directory if it doesn't exist and make sure is owned by uid:gid
-            try:
-                os.makedirs(path)
-                os.chown(path, self.uid, self.gid)
-            except:
-                pass
+            os.makedirs(path, exist_ok=True)
+            os.chown(path, self.uid, self.gid)
             for ent in os.scandir(path):
                 if ent.is_dir():
                     homedirs.append(ent.path)
