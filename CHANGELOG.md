@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.1] - 2025-10-02
+
+([full changelog](https://github.com/2i2c-org/jupyterhub-home-nfs/compare/1.1.0...34c00b79a00c146f2d19fd4b0aa4481863d9beb9))
+
+### Enhancements made
+
+- Mkdir and chown unconditionally and let it throw errors if it fails [#56](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/56) ([@GeorgianaElena](https://github.com/GeorgianaElena))
+- Setup a custom ownership uid:gid of the initial share  [#55](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/55) ([@GeorgianaElena](https://github.com/GeorgianaElena), [@yuvipanda](https://github.com/yuvipanda))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/2i2c-org/jupyterhub-home-nfs/graphs/contributors?from=2025-09-25&to=2025-10-02&type=c))
+
+@GeorgianaElena ([activity](https://github.com/search?q=repo%3A2i2c-org%2Fjupyterhub-home-nfs+involves%3AGeorgianaElena+updated%3A2025-09-25..2025-10-02&type=Issues)) | @yuvipanda ([activity](https://github.com/search?q=repo%3A2i2c-org%2Fjupyterhub-home-nfs+involves%3Ayuvipanda+updated%3A2025-09-25..2025-10-02&type=Issues))
+
 ## [1.1.0] - 2025-09-25
 
 ([full changelog](https://github.com/2i2c-org/jupyterhub-home-nfs/compare/1.0.1...fa9a311996bb532748d6d650644e2ccb45e92724))
