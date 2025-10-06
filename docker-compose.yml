@@ -18,6 +18,11 @@ services:
     volumes:
       - ./jupyterhub_home_nfs:/app
       - ./tests:/app/tests
-    command: ["/bin/bash", "-c", "/usr/local/bin/mount-xfs.sh && python3 -m pytest -v /app/tests/tests.py"]
+    command:
+      [
+        "/bin/bash",
+        "-c",
+        "/usr/local/bin/mount-xfs.sh && python3 -m pytest -v /app/tests/tests.py",
+      ]
     environment:
       - PYTHONPATH=/app
