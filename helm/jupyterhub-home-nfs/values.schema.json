@@ -109,6 +109,10 @@
       "required": ["type"]
     },
     "annotations": { "type": "object" },
+    "initContainers": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
     "nodeSelector": { "type": "object" },
     "affinity": { "type": "object" },
     "tolerations": {
