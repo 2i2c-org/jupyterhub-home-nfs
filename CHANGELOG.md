@@ -7,7 +7,7 @@
 ### Enhancements made
 
 - Mkdir and chown unconditionally and let it throw errors if it fails [#56](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/56) ([@GeorgianaElena](https://github.com/GeorgianaElena))
-- Setup a custom ownership uid:gid of the initial share  [#55](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/55) ([@GeorgianaElena](https://github.com/GeorgianaElena), [@yuvipanda](https://github.com/yuvipanda))
+- Setup a custom ownership uid:gid of the initial share [#55](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/55) ([@GeorgianaElena](https://github.com/GeorgianaElena), [@yuvipanda](https://github.com/yuvipanda))
 
 ### Contributors to this release
 

@@ -59,7 +59,7 @@ spec:
       {{- if .Values.quotaEnforcer.enabled }}
       - name: enforce-xfs-quota
         image: "{{ .Values.quotaEnforcer.image.repository }}:{{ .Values.quotaEnforcer.image.tag }}"
-        command: ["python", "-m", "jupyterhub_home_nfs.generate", "--config-file", "/etc/jupyterhub-home-nfs/mounted-secret/quota-enforcer-config.py"]
+        args: ["python", "-m", "jupyterhub_home_nfs.generate", "--config-file", "/etc/jupyterhub-home-nfs/mounted-secret/quota-enforcer-config.py"]
         securityContext:
           privileged: true
         volumeMounts:
@@ -73,7 +73,7 @@ spec:
       - name: auto-xfs-resizer
         # Use same image as quotaEnforcer as it has xfs_growfs
         image: "{{ .Values.quotaEnforcer.image.repository }}:{{ .Values.quotaEnforcer.image.tag }}"
-        command:
+        args:
         - /bin/bash
         - -c
         - |
