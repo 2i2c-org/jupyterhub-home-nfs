@@ -61,25 +61,42 @@ def open_replace_atomic(path, *, mode="w"):
     os.replace(temp_path, path)
 
 
-def logged_check_call(args, logger, *, log_stdout=True, log_stderr=True):
+def logged_check_call(
+    args,
+    logger,
+    *,
+    log_stdout=True,
+    log_stderr=True,
+):
     """
     Run `subprocess.check_call` with a logger to output stdio.
+    Return the stdout of the stream.
     """
+    # Only record stderr if asked
+    stderr_kind = subprocess.PIPE if log_stderr else subprocess.DEVNULL
     result = subprocess.run(
-        args, capture_output=True, text=True, errors="surrogateescape"
+        args,
+        stdout=subprocess.PIPE,
+        stderr=stderr_kind,
+        encoding="utf8",
+        errors="surrogateescape",
     )
+
+    # Set log level according to return code
     log_level = logging.ERROR if result.returncode else logging.DEBUG
 
+    # Handle stdout
     if log_stdout:
         for line in result.stdout.splitlines():
             logger.log(log_level, line)
 
+    # Handle stderr
     if log_stderr:
         for line in result.stderr.splitlines():
             logger.log(log_level, line)
 
     result.check_returncode()
-    return result
+    return result.stdout
 
 
 def parse_projids(path):
@@ -182,7 +199,7 @@ class QuotaManager(Application):
         result = logged_check_call(
             ["df", "--output=target", os.fspath(path)], self.log, log_stdout=False
         )
-        return result.stdout.strip().splitlines()[-1].strip()
+        return result.strip().splitlines()[-1].strip()
 
     def reconcile_projfiles(self, *, is_dirty=False):
         """
@@ -275,7 +292,7 @@ class QuotaManager(Application):
         return {
             path: int(projid)
             for projid, _, path in (
-                line.split() for line in result.stdout.strip().splitlines()
+                line.split() for line in result.strip().splitlines()
             )
         }
         return
@@ -308,7 +325,7 @@ class QuotaManager(Application):
             }
 
         quotas = {}
-        for line in result.stdout.strip().splitlines():
+        for line in result.strip().splitlines():
             items = iter(line.split())
             path = next(items)
             blocks = parse_collection(items)
@@ -406,6 +423,9 @@ class QuotaManager(Application):
                         mountpoint,
                     ],
                     self.log,
+                    # stderr can be huge for this call, because it includes verbose per-file information
+                    # let's exclude it to avoid OOM errors with large amounts of string processing'
+                    log_stderr=False,
                 )
             except subprocess.CalledProcessError as e:
                 self.log.error(
