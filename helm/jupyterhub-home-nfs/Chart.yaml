@@ -1,5 +1,6 @@
 apiVersion: v2
 name: jupyterhub-home-nfs
-description: A Helm chart for an in-cluster NFS server with storage quota enforcement
-version: 1.2.1-0.dev
+description: A Helm chart for an in-cluster NFS server with storage quota 
+  enforcement
+version: 0.0.1-set.by.chartpress
 appVersion: 1.2.1-0.dev
