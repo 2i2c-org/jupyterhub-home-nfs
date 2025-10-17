@@ -31,6 +31,7 @@ there that aren't put in there by this script, they will be removed!
 """
 
 import contextlib
+import enum
 import itertools
 import logging
 import os
@@ -42,6 +43,13 @@ import time
 
 from traitlets import Dict, Float, Int, List, Unicode
 from traitlets.config import Application
+
+
+class ErrorLogStrategy(enum.Enum):
+    never = enum.auto()
+    always = enum.auto()
+    on_error = enum.auto()
+
 
 # Line at beginning of projid / projects file stating ownership
 OWNERSHIP_PREAMBLE = (
@@ -61,25 +69,59 @@ def open_replace_atomic(path, *, mode="w"):
     os.replace(temp_path, path)
 
 
-def logged_check_call(args, logger, *, log_stdout=True, log_stderr=True):
+def logged_check_call(
+    args,
+    logger,
+    *,
+    log_stdout=True,
+    log_stderr_strategy=ErrorLogStrategy.always,
+    stderr_on_disk=False,
+):
     """
     Run `subprocess.check_call` with a logger to output stdio.
+    Return the stdout of the stream.
+
+    :param stderr_on_disk: write stderr to disk, rather than holding in memory.
     """
-    result = subprocess.run(
-        args, capture_output=True, text=True, errors="surrogateescape"
+    # Create a context manager that returns the argument to the process.
+    stderr_context = (
+        tempfile.TemporaryFile("w+b")
+        if stderr_on_disk
+        else contextlib.nullcontext(subprocess.PIPE)
     )
-    log_level = logging.ERROR if result.returncode else logging.DEBUG
+    with stderr_context as stderr_file_or_pipe:
+        result = subprocess.run(
+            args, stdout=subprocess.PIPE, stderr=stderr_file_or_pipe
+        )
+        # Set log level according to return code
+        log_level = logging.ERROR if result.returncode else logging.DEBUG
 
-    if log_stdout:
-        for line in result.stdout.splitlines():
-            logger.log(log_level, line)
+        # Handle stdout
+        stdout_body = result.stdout.decode("utf8", errors="surrogateescape")
+        if log_stdout:
+            for line in stdout_body.splitlines():
+                logger.log(log_level, line)
 
-    if log_stderr:
-        for line in result.stderr.splitlines():
-            logger.log(log_level, line)
+        # Handle stderr
+        if (
+            # Always logging
+            log_stderr_strategy is ErrorLogStrategy.always
+            # Logging on error
+            or log_stderr_strategy is ErrorLogStrategy.on_error
+            and result.returncode
+        ):
+            if stderr_file_or_pipe is subprocess.PIPE:
+                stderr_raw_lines = result.stderr.splitlines()
+            else:
+                # Then stderr must be file
+                stderr_file_or_pipe.seek(0)
+                stderr_raw_lines = (l.rstrip() for l in stderr_file_or_pipe)
 
-    result.check_returncode()
-    return result
+            for line in stderr_raw_lines:
+                logger.log(log_level, line.decode("utf8", errors="surrogateescape"))
+
+        result.check_returncode()
+        return stdout_body
 
 
 def parse_projids(path):
@@ -182,7 +224,7 @@ class QuotaManager(Application):
         result = logged_check_call(
             ["df", "--output=target", os.fspath(path)], self.log, log_stdout=False
         )
-        return result.stdout.strip().splitlines()[-1].strip()
+        return result.strip().splitlines()[-1].strip()
 
     def reconcile_projfiles(self, *, is_dirty=False):
         """
@@ -275,7 +317,7 @@ class QuotaManager(Application):
         return {
             path: int(projid)
             for projid, _, path in (
-                line.split() for line in result.stdout.strip().splitlines()
+                line.split() for line in result.strip().splitlines()
             )
         }
         return
@@ -308,7 +350,7 @@ class QuotaManager(Application):
             }
 
         quotas = {}
-        for line in result.stdout.strip().splitlines():
+        for line in result.strip().splitlines():
             items = iter(line.split())
             path = next(items)
             blocks = parse_collection(items)
@@ -406,6 +448,10 @@ class QuotaManager(Application):
                         mountpoint,
                     ],
                     self.log,
+                    # Let's only log stderr when there's an error
+                    log_stderr_strategy=ErrorLogStrategy.on_error,
+                    # The stderr output here can be huge. Let's log it to disk'
+                    stderr_on_disk=True,
                 )
             except subprocess.CalledProcessError as e:
                 self.log.error(
