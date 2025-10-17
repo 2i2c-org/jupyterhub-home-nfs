@@ -457,7 +457,7 @@ def test_quota_clear(quota_manager):
     create_home_directories(MOUNT_POINT, homedirs)
 
     quota_manager.paths = [MOUNT_POINT]
-    quota_manager.hard_quota = 1  # 1GB
+    quota_manager.hard_quota = 1  # 1GiB
 
     # Apply the quotas
     quota_manager.reconcile_step()
@@ -563,7 +563,7 @@ def test_project_clear(quota_manager):
     create_home_directories(MOUNT_POINT, homedirs)
 
     quota_manager.paths = [MOUNT_POINT]
-    quota_manager.hard_quota = 1  # 1GB
+    quota_manager.hard_quota = 1  # 1GiB
 
     # Apply the quotas
     quota_manager.reconcile_step()
