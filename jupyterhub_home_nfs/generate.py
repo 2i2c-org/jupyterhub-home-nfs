@@ -335,9 +335,9 @@ class QuotaManager(Application):
         """
         Make sure each project in /etc/projid has correct hard quota set
         """
-        # Convert GiB to KB for xfs_quota
+        # Convert GiB to KiB for xfs_quota
         hard_quota_kb = int(self.hard_quota * 1024 * 1024)
-        # Convert quota_overrides from GiB to KB
+        # Convert quota_overrides from GiB to KiB
         quota_overrides_kb = {
             dirname: int(quota_gb * 1024 * 1024)
             for dirname, quota_gb in self.quota_overrides.items()
