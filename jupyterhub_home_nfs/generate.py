@@ -31,7 +31,6 @@ there that aren't put in there by this script, they will be removed!
 """
 
 import contextlib
-import enum
 import itertools
 import logging
 import os
@@ -43,13 +42,6 @@ import time
 
 from traitlets import Dict, Float, Int, List, Unicode
 from traitlets.config import Application
-
-
-class ErrorLogStrategy(enum.Enum):
-    never = enum.auto()
-    always = enum.auto()
-    on_error = enum.auto()
-
 
 # Line at beginning of projid / projects file stating ownership
 OWNERSHIP_PREAMBLE = (
@@ -74,54 +66,37 @@ def logged_check_call(
     logger,
     *,
     log_stdout=True,
-    log_stderr_strategy=ErrorLogStrategy.always,
-    stderr_on_disk=False,
+    log_stderr=True,
 ):
     """
     Run `subprocess.check_call` with a logger to output stdio.
     Return the stdout of the stream.
-
-    :param stderr_on_disk: write stderr to disk, rather than holding in memory.
     """
-    # Create a context manager that returns the argument to the process.
-    stderr_context = (
-        tempfile.TemporaryFile("w+b")
-        if stderr_on_disk
-        else contextlib.nullcontext(subprocess.PIPE)
+    # Only record stderr if asked
+    stderr_kind = subprocess.PIPE if log_stderr else subprocess.DEVNULL
+    result = subprocess.run(
+        args,
+        stdout=subprocess.PIPE,
+        stderr=stderr_kind,
+        encoding="utf8",
+        errors="surrogateescape",
     )
-    with stderr_context as stderr_file_or_pipe:
-        result = subprocess.run(
-            args, stdout=subprocess.PIPE, stderr=stderr_file_or_pipe
-        )
-        # Set log level according to return code
-        log_level = logging.ERROR if result.returncode else logging.DEBUG
 
-        # Handle stdout
-        stdout_body = result.stdout.decode("utf8", errors="surrogateescape")
-        if log_stdout:
-            for line in stdout_body.splitlines():
-                logger.log(log_level, line)
+    # Set log level according to return code
+    log_level = logging.ERROR if result.returncode else logging.DEBUG
 
-        # Handle stderr
-        if (
-            # Always logging
-            log_stderr_strategy is ErrorLogStrategy.always
-            # Logging on error
-            or log_stderr_strategy is ErrorLogStrategy.on_error
-            and result.returncode
-        ):
-            if stderr_file_or_pipe is subprocess.PIPE:
-                stderr_raw_lines = result.stderr.splitlines()
-            else:
-                # Then stderr must be file
-                stderr_file_or_pipe.seek(0)
-                stderr_raw_lines = (l.rstrip() for l in stderr_file_or_pipe)
+    # Handle stdout
+    if log_stdout:
+        for line in result.stdout.splitlines():
+            logger.log(log_level, line)
 
-            for line in stderr_raw_lines:
-                logger.log(log_level, line.decode("utf8", errors="surrogateescape"))
+    # Handle stderr
+    if log_stderr:
+        for line in result.stderr.splitlines():
+            logger.log(log_level, line)
 
-        result.check_returncode()
-        return stdout_body
+    result.check_returncode()
+    return result.stdout
 
 
 def parse_projids(path):
@@ -448,10 +423,9 @@ class QuotaManager(Application):
                         mountpoint,
                     ],
                     self.log,
-                    # Let's only log stderr when there's an error
-                    log_stderr_strategy=ErrorLogStrategy.on_error,
-                    # The stderr output here can be huge. Let's log it to disk'
-                    stderr_on_disk=True,
+                    # stderr can be huge for this call, because it includes verbose per-file information
+                    # let's exclude it to avoid OOM errors with large amounts of string processing'
+                    log_stderr=False,
                 )
             except subprocess.CalledProcessError as e:
                 self.log.error(
