@@ -117,6 +117,11 @@ service:
 # Annotations for the deployment
 annotations: {}
 
+# Init containers for the deployment.
+# `tpl` is applied when rendering these, so you can include {{ .Release.Name }}
+# or references to the jupyterhub-home-nfs chart's configured values.
+initContainers: []
+
 # Node selector for the deployment
 nodeSelector: {}
 
