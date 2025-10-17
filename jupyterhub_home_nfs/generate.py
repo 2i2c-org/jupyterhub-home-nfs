@@ -65,15 +65,17 @@ def logged_check_call(args, logger, *, log_stdout=True, log_stderr=True):
     """
     Run `subprocess.check_call` with a logger to output stdio.
     """
-    result = subprocess.run(args, capture_output=True)
+    result = subprocess.run(
+        args, capture_output=True, text=True, errors="surrogateescape"
+    )
     log_level = logging.ERROR if result.returncode else logging.DEBUG
 
     if log_stdout:
-        for line in result.stdout.decode().splitlines():
+        for line in result.stdout.splitlines():
             logger.log(log_level, line)
 
     if log_stderr:
-        for line in result.stderr.decode().splitlines():
+        for line in result.stderr.splitlines():
             logger.log(log_level, line)
 
     result.check_returncode()
@@ -180,7 +182,7 @@ class QuotaManager(Application):
         result = logged_check_call(
             ["df", "--output=target", os.fspath(path)], self.log, log_stdout=False
         )
-        return result.stdout.decode().strip().splitlines()[-1].strip()
+        return result.stdout.strip().splitlines()[-1].strip()
 
     def reconcile_projfiles(self, *, is_dirty=False):
         """
@@ -273,7 +275,7 @@ class QuotaManager(Application):
         return {
             path: int(projid)
             for projid, _, path in (
-                line.split() for line in result.stdout.decode().strip().splitlines()
+                line.split() for line in result.stdout.strip().splitlines()
             )
         }
         return
@@ -306,7 +308,7 @@ class QuotaManager(Application):
             }
 
         quotas = {}
-        for line in result.stdout.decode().strip().splitlines():
+        for line in result.stdout.strip().splitlines():
             items = iter(line.split())
             path = next(items)
             blocks = parse_collection(items)
