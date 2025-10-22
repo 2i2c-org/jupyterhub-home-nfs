@@ -27,10 +27,10 @@ gke:
   enabled: true
   volumeId: projects/example-project/zones/europe-west2-b/disks/hub-nfs-homedirs
 quotaEnforcer:
-  hardQuota: "1" # in GB
+  hardQuota: "1" # in GiB
 ```
 
-Here we are using a GKE volume to store the home directories. We are also enabling the Prometheus exporter to collect disk usage metrics from the NFS server. And enforcing a hard quota of 1GB per user.
+Here we are using a GKE volume to store the home directories. We are also enabling the Prometheus exporter to collect disk usage metrics from the NFS server. And enforcing a hard quota of 1GiB per user.
 
 ### Installation through Helm
 

@@ -78,14 +78,14 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 
 - Automatically resize the filesystem if necessary [#37](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/37) ([@yuvipanda](https://github.com/yuvipanda), [@GeorgianaElena](https://github.com/GeorgianaElena))
 
-- Added quota override functionality for specific folders. This allows setting custom quotas for individual folders, which is particularly useful for shared folders that may need different quota limits than regular user directories. The feature is configured via the `quota_overrides` option which maps folder names to custom quota values in GB [#36](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/36) ([@sunu](https://github.com/sunu), [@GeorgianaElena](https://github.com/GeorgianaElena))
+- Added quota override functionality for specific folders. This allows setting custom quotas for individual folders, which is particularly useful for shared folders that may need different quota limits than regular user directories. The feature is configured via the `quota_overrides` option which maps folder names to custom quota values in GiB [#36](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/36) ([@sunu](https://github.com/sunu), [@GeorgianaElena](https://github.com/GeorgianaElena))
 
   ```yaml
   quotaEnforcer:
     config:
       QuotaManager:
         quota_overrides:
-          "_shared-public": 50 # Custom quota of 50 GB for the shared public folder
+          "_shared-public": 50 # Custom quota of 50 GiB for the shared public folder
   ```
 
 - Fix FileNotFoundError when export directory doesn't exist [#35](https://github.com/2i2c-org/jupyterhub-home-nfs/pull/35) ([@sunu](https://github.com/sunu), [@GeorgianaElena](https://github.com/GeorgianaElena))
