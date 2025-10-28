@@ -1,7 +1,7 @@
 FROM ubuntu:24.04 AS base
 
 RUN apt-get update > /dev/null && \
-    apt-get install --yes python3 python3-pip python3-venv xfsprogs > /dev/null && \
+    apt-get install --yes python3 python3-pip python3-venv xfsprogs tini > /dev/null && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Create and activate virtual environment
@@ -13,6 +13,7 @@ COPY ./pyproject.toml /opt/jupyterhub-home-nfs/pyproject.toml
 COPY ./README.md /opt/jupyterhub-home-nfs/README.md
 
 WORKDIR /opt/jupyterhub-home-nfs
+ENTRYPOINT ["tini", "--"]
 
 # Development stage
 FROM base AS dev
@@ -29,7 +30,7 @@ COPY ./jupyterhub_home_nfs /opt/jupyterhub-home-nfs/jupyterhub_home_nfs
 
 RUN pip install -e .
 
-CMD ["/usr/local/bin/start.sh"]
+CMD ["/bin/bash", "/usr/local/bin/start.sh"]
 
 # Production stage
 FROM base AS prod
