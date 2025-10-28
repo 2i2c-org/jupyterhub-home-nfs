@@ -16,7 +16,7 @@ fullnameOverride: ""
 nfsServer:
   image:
     repository: ghcr.io/2i2c-org/nfs-ganesha
-    tag: 0.0.7
+    tag: set-by-chartpress
   resources: {}
   # Whether to enable a client allow list
   # If true, only the clients in allowedClients will be allowed to access the NFS server
@@ -45,7 +45,7 @@ quotaEnforcer:
   enabled: true
   image:
     repository: ghcr.io/2i2c-org/jupyterhub-home-nfs
-    tag: 0.0.7
+    tag: set-by-chartpress
 
 
   # The "config" section below is rendered by a k8s Secret and mounted as a .yaml
