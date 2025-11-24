@@ -114,6 +114,11 @@ persistentVolume:
 service:
   type: ClusterIP
 
+# Additional containers for the deployment
+# `tpl` is applied when rendering these, so you can include {{ .Release.Name }}
+# or references to the jupyterhub-home-nfs chart's configured values.
+extraContainers: []
+
 # Annotations for the deployment
 annotations: {}
 
