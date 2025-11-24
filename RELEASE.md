@@ -7,6 +7,7 @@ We publish Docker images and Helm charts to GitHub Container Registry (ghcr.io) 
 To update the version:
 
 1. **Update the CHANGELOG.md**
+
    - [ ] Generate a list of PRs using [github-activity](https://github.com/executablebooks/github-activity)
      ```
      pip install github-activity
@@ -51,6 +52,7 @@ To update the version:
    ```
 
    This will:
+
    - Update `__version__` in `jupyterhub_home_nfs/__init__.py`
    - Update version and appVersion in `helm/jupyterhub-home-nfs/Chart.yaml`
    - Create a git commit
@@ -68,6 +70,7 @@ To update the version:
 1. **CI Automation**
 
    Once we create a tag, the GitHub Actions workflow ([`build-publish-docker-helm.yaml`](https://github.com/2i2c-org/jupyterhub-home-nfs/blob/main/.github/workflows/build-publish-docker-helm.yaml)) will automatically:
+
    - Build the Docker images
    - Push them to GitHub Container Registry (ghcr.io)
    - Update the Helm chart with the new image tags
