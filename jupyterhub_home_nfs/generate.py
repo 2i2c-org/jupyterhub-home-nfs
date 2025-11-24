@@ -99,21 +99,6 @@ def logged_check_call(
     return result.stdout
 
 
-def parse_projids(path):
-    """
-    Parse a projids file, returning mapping of paths to project IDs
-    """
-    projects = {}
-    if os.path.exists(path):
-        with open(path) as f:
-            for line in f:
-                if line.strip().startswith("#"):
-                    continue
-                splits = line.split(":", 2)
-                projects[splits[0]] = int(splits[1])
-    return projects
-
-
 class QuotaManager(Application):
     # Config file can be loaded from this location
     config_file = Unicode("", help="The config file to load").tag(config=True)
@@ -201,6 +186,23 @@ class QuotaManager(Application):
         )
         return result.strip().splitlines()[-1].strip()
 
+    def parse_projids(self, path):
+        """
+        Parse a projids file, returning mapping of paths to project IDs
+        """
+        if not os.path.exists(path):
+            return {}
+        projects = {}
+        with open(path) as f:
+            for line in f:
+                if line.lstrip().startswith("#"):
+                    continue
+                proj_path, _projid = line.split(":", 2)
+                projid = int(_projid)
+
+                projects[proj_path] = projid
+        return projects
+
     def reconcile_projfiles(self, *, is_dirty=False):
         """
         Make sure each homedir in paths has an appropriate projid entry.
@@ -217,6 +219,9 @@ class QuotaManager(Application):
             os.chown(path, self.uid, self.gid)
             for ent in os.scandir(path):
                 if ent.is_dir():
+                    if ent.name.startswith("."):
+                        self.log.warn(f"Found hidden directory {ent.name}, ignoring")
+                        continue
                     homedirs.append(ent.path)
 
         homedirs.sort()
@@ -227,7 +232,7 @@ class QuotaManager(Application):
             self.log.debug("Ignoring existing projects")
         else:
             # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
-            projects = parse_projids(self.projid_file)
+            projects = self.parse_projids(self.projid_file)
 
         self.log.debug(f"projects: {projects}")
 
@@ -363,7 +368,7 @@ class QuotaManager(Application):
         }
 
         # Get current set of projects on disk
-        projects = parse_projids(self.projid_file)
+        projects = self.parse_projids(self.projid_file)
 
         # Fetch quota information from filesystem
         applied_quotas = self.get_applied_quotas()
