@@ -45,6 +45,10 @@ jobs:
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
 
+      - name: Convert values schema
+        run: yq -o json values.schema.yaml > values.schema.json
+        working-directory: helm/jupyterhub-home-nfs
+
       - name: Lint Helm Chart
         run: |
           helm lint helm/jupyterhub-home-nfs
