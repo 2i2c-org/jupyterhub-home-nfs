@@ -107,6 +107,9 @@ spec:
           readOnly: true
         resources: {{ toJson .Values.prometheusExporter.resources }}
       {{- end }}
+      {{- with .Values.extraContainers }}
+      {{- tpl (. | toYaml) $ | nindent 6 }}
+      {{- end }}
       volumes:
       - name: home-directories
         persistentVolumeClaim:

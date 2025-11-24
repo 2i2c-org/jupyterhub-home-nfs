@@ -132,6 +132,10 @@ properties:
       - type
   annotations:
     type: object
+  extraContainers:
+    type: array
+    description: |
+      Additional containers for the Pod. Use a k8s native syntax.
   nodeSelector:
     type: object
   affinity:
