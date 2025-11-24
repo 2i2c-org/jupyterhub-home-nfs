@@ -1,0 +1,3 @@
+helm/**/*.yaml
+helm/**/*.yml
+!helm/values.schema.yaml
