@@ -40,8 +40,11 @@ import sys
 import tempfile
 import time
 
-from traitlets import Dict, Float, Int, List, Unicode
+from prometheus_client import start_http_server
+from traitlets import Bool, Dict, Float, Int, List, Unicode
 from traitlets.config import Application
+
+from . import metrics
 
 # Line at beginning of projid / projects file stating ownership
 OWNERSHIP_PREAMBLE = (
@@ -166,6 +169,16 @@ class QuotaManager(Application):
         default_value=1000,
         help="The GID that will own the home directories and initial share",
     ).tag(config=True)
+
+    metrics_port = Int(
+        default_value=7500,
+        help="Port to expose prometheus metrics on"
+    )
+
+    enable_metrics = Bool(
+        default_value=True,
+        help="Enable prometheus metrics"
+    )
 
     aliases = {
         "config-file": "QuotaManager.config_file",
@@ -322,6 +335,7 @@ class QuotaManager(Application):
             return {
                 "soft": int(soft),
                 "hard": int(hard),
+                "used": int(used)
             }
 
         quotas = {}
@@ -333,6 +347,7 @@ class QuotaManager(Application):
             realtime = parse_collection(items)
             # Everything here is in kb, since that's what xfs_quota reports things in
             quotas[path] = {"blocks": blocks, "inodes": inodes, "realtime": realtime}
+
         return quotas
 
     def quota_is_dirty(self, quotas, intended_block_quota):
@@ -349,6 +364,23 @@ class QuotaManager(Application):
                 ("inodes", "realtime"), ("hard", "soft")
             )
         )
+
+    def update_metrics(self, applied_quotas: dict[str, dict]):
+        for directory_path, quotas in applied_quotas.items():
+            # Let's determine directory name to not be the full path (as that's an implementation detail)
+            # but just the specific path that's beyond the common base path.
+            directory_name = None
+            for path in self.paths:
+                if directory_path.startswith(path):
+                    directory_name = directory_path[len(path):]
+                    break
+
+            if directory_name is None:
+                # This isn't managed by us
+                continue
+            # xfs_quotas sets things in KB, so let's convert it to bytes
+            metrics.HARD_LIMIT.labels(directory=directory_name).set(quotas["blocks"]["hard"] * 1024)
+            metrics.TOTAL_SIZE.labels(directory=directory_name).set(quotas["blocks"]["used"] * 1024)
 
     def reconcile_quotas(self, *, is_dirty=False):
         """
@@ -368,6 +400,8 @@ class QuotaManager(Application):
         # Fetch quota information from filesystem
         applied_quotas = self.get_applied_quotas()
         applied_projects = self.get_applied_projects()
+
+        self.update_metrics(applied_quotas)
 
         self.log.debug(f"Applied quotas: {applied_quotas}")
 
@@ -464,6 +498,8 @@ class QuotaManager(Application):
         self.reconcile_quotas(is_dirty=quotas_is_dirty)
 
     def start(self):
+        if self.enable_metrics:
+            start_http_server(self.metrics_port)
         while True:
             self.reconcile_step()
             time.sleep(self.wait_time)

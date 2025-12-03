@@ -17,6 +17,7 @@ classifiers = [
 dependencies = [
     "traitlets>=5.13.0",
     "ruamel-yaml==0.18.10",
+    "prometheus-client"
 ]
 
 [project.urls]

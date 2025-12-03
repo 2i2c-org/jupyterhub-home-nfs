@@ -156,9 +156,9 @@ def test_exclude_dirs(quota_manager):
 
     applied_quotas = quota_manager.get_applied_quotas()
     assert applied_quotas[os.path.join(MOUNT_POINT, "a")] == {
-        "blocks": {"soft": 0, "hard": 1000},
-        "inodes": {"soft": 0, "hard": 0},
-        "realtime": {"soft": 0, "hard": 0},
+        "blocks": {"soft": 0, "hard": 1000, "used": 0},
+        "inodes": {"soft": 0, "hard": 0, "used": 1},
+        "realtime": {"soft": 0, "hard": 0, "used": 0},
     }
 
     # Now reconcile with exclusions
@@ -167,9 +167,9 @@ def test_exclude_dirs(quota_manager):
 
     applied_quotas = quota_manager.get_applied_quotas()
     assert applied_quotas[os.path.join(MOUNT_POINT, "a")] == {
-        "blocks": {"soft": 0, "hard": 0},
-        "inodes": {"soft": 0, "hard": 0},
-        "realtime": {"soft": 0, "hard": 0},
+        "blocks": {"soft": 0, "hard": 0, "used": 0},
+        "inodes": {"soft": 0, "hard": 0, "used": 1},
+        "realtime": {"soft": 0, "hard": 0, "used": 0},
     }
 
     # Create a 2MB test file using a temporary file
@@ -296,8 +296,8 @@ def test_quota_overrides(quota_manager):
     quota_manager.reconcile_step()
 
     invariant_quota = {
-        "inodes": {"soft": 0, "hard": 0},
-        "realtime": {"soft": 0, "hard": 0},
+        "inodes": {"soft": 0, "hard": 0, "used": 1},
+        "realtime": {"soft": 0, "hard": 0, "used": 0},
     }
 
     applied_quotas = quota_manager.get_applied_quotas()
@@ -310,6 +310,7 @@ def test_quota_overrides(quota_manager):
     # 1. "regular": should get default hard_quota (0.001 GiB)
     assert applied_quotas[os.path.join(MOUNT_POINT, "regular")] == {
         "blocks": {
+            "used": 0,
             "soft": 0,
             "hard":
             # Tolerance of 4k default block size
@@ -322,6 +323,7 @@ def test_quota_overrides(quota_manager):
         "blocks": {
             "soft": 0,
             "hard": 0,
+            "used": 0
         },
         **invariant_quota,
     }
@@ -329,6 +331,7 @@ def test_quota_overrides(quota_manager):
     # 3. "override": should get custom quota (0.005 GiB)
     assert applied_quotas[os.path.join(MOUNT_POINT, "override")] == {
         "blocks": {
+            "used": 0,
             "soft": 0,
             "hard":
             # Tolerance of 4k default block size
@@ -341,6 +344,7 @@ def test_quota_overrides(quota_manager):
     # This tests that quota_overrides takes priority over exclude
     assert applied_quotas[os.path.join(MOUNT_POINT, "both")] == {
         "blocks": {
+            "used": 0,
             "soft": 0,
             "hard":
             # Tolerance of 4k default block size
@@ -441,13 +445,14 @@ def test_quota_overrides_cli(tmp_path):
     applied_quotas = quota_manager.get_applied_quotas()
     assert applied_quotas[os.path.join(MOUNT_POINT, "test")] == {
         "blocks": {
+            "used": 0,
             "soft": 0,
             "hard":
             # Tolerance of 4k default block size
             pytest.approx(0.002 * GIB_TO_KIB, abs=DEFAULT_BLOCK_SIZE_KIB),
         },
-        "inodes": {"soft": 0, "hard": 0},
-        "realtime": {"soft": 0, "hard": 0},
+        "inodes": {"soft": 0, "hard": 0, "used": 1},
+        "realtime": {"soft": 0, "hard": 0, "used": 0},
     }, "Expected quota of 0.002 GiB for 'test'"
 
 
@@ -470,16 +475,19 @@ def test_quota_clear(quota_manager):
         path = os.path.join(MOUNT_POINT, name)
         assert applied_quotas[path] == {
             "blocks": {
+                "used": 0,
                 "soft": 0,
                 "hard": 1048576,
             },
             "inodes": {
                 "soft": 0,
                 "hard": 0,
+                "used": 1
             },
             "realtime": {
                 "soft": 0,
                 "hard": 0,
+                "used": 0
             },
         }
 
@@ -502,14 +510,17 @@ def test_quota_clear(quota_manager):
     path = os.path.join(MOUNT_POINT, "beta")
     assert applied_quotas[path] == {
         "blocks": {
+            "used": 0,
             "soft": 0,
             "hard": 1048576,
         },
         "inodes": {
+            "used": 1,
             "soft": 0,
             "hard": 10,
         },
         "realtime": {
+            "used": 0,
             "soft": 0,
             "hard": 0,
         },
@@ -521,14 +532,17 @@ def test_quota_clear(quota_manager):
         path = os.path.join(MOUNT_POINT, name)
         assert applied_quotas[path] == {
             "blocks": {
+                "used": 0,
                 "soft": 0,
                 "hard": 1048576,
             },
             "inodes": {
+                "used": 1,
                 "soft": 0,
                 "hard": 0,
             },
             "realtime": {
+                "used": 0,
                 "soft": 0,
                 "hard": 0,
             },
@@ -543,14 +557,17 @@ def test_quota_clear(quota_manager):
         path = os.path.join(MOUNT_POINT, name)
         assert applied_quotas[path] == {
             "blocks": {
+                "used": 0,
                 "soft": 0,
                 "hard": 1048576,
             },
             "inodes": {
+                "used": 1,
                 "soft": 0,
                 "hard": 0,
             },
             "realtime": {
+                "used": 0,
                 "soft": 0,
                 "hard": 0,
             },
