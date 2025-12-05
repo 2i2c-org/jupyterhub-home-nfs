@@ -170,15 +170,9 @@ class QuotaManager(Application):
         help="The GID that will own the home directories and initial share",
     ).tag(config=True)
 
-    metrics_port = Int(
-        default_value=7500,
-        help="Port to expose prometheus metrics on"
-    )
+    metrics_port = Int(default_value=7500, help="Port to expose prometheus metrics on")
 
-    enable_metrics = Bool(
-        default_value=True,
-        help="Enable prometheus metrics"
-    )
+    enable_metrics = Bool(default_value=True, help="Enable prometheus metrics")
 
     aliases = {
         "config-file": "QuotaManager.config_file",
@@ -332,11 +326,7 @@ class QuotaManager(Application):
         # Parse a collection of quotas (e.g. blocks, inodes)
         def parse_collection(quotas):
             used, soft, hard, warn, grace = itertools.islice(quotas, 5)
-            return {
-                "soft": int(soft),
-                "hard": int(hard),
-                "used": int(used)
-            }
+            return {"soft": int(soft), "hard": int(hard), "used": int(used)}
 
         quotas = {}
         for line in result.strip().splitlines():
@@ -372,15 +362,20 @@ class QuotaManager(Application):
             directory_name = None
             for path in self.paths:
                 if directory_path.startswith(path):
-                    directory_name = directory_path[len(path):]
+                    # FIXME: Is there some sort of directory traversal attack possible here?
+                    directory_name = directory_path[len(path) + 1 :]
                     break
 
             if directory_name is None:
                 # This isn't managed by us
                 continue
             # xfs_quotas sets things in KB, so let's convert it to bytes
-            metrics.HARD_LIMIT.labels(directory=directory_name).set(quotas["blocks"]["hard"] * 1024)
-            metrics.TOTAL_SIZE.labels(directory=directory_name).set(quotas["blocks"]["used"] * 1024)
+            metrics.HARD_LIMIT.labels(directory=directory_name).set(
+                quotas["blocks"]["hard"] * 1024
+            )
+            metrics.TOTAL_SIZE.labels(directory=directory_name).set(
+                quotas["blocks"]["used"] * 1024
+            )
 
     def reconcile_quotas(self, *, is_dirty=False):
         """
@@ -499,10 +494,15 @@ class QuotaManager(Application):
 
     def start(self):
         if self.enable_metrics:
-            start_http_server(self.metrics_port)
-        while True:
-            self.reconcile_step()
-            time.sleep(self.wait_time)
+            metrics_server, metrics_server_thread = start_http_server(self.metrics_port)
+        try:
+            while True:
+                self.reconcile_step()
+                time.sleep(self.wait_time)
+        finally:
+            if self.enable_metrics:
+                metrics_server.shutdown()
+                metrics_server_thread.join()
 
 
 def main():
