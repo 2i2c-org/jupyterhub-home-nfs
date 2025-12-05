@@ -449,7 +449,9 @@ def test_metrics(quota_manager):
             name="dirsize_hard_limit_bytes",
             labels={"directory": "user"},
             # The value is in bytes, not gb (used by jupyterhub-home-nfs) or kb (used by xfs)
-            value=pytest.approx(0.004 * 1024 * 1024 * 1024, abs=DEFAULT_BLOCK_SIZE_KIB * 1024),
+            value=pytest.approx(
+                0.004 * 1024 * 1024 * 1024, abs=DEFAULT_BLOCK_SIZE_KIB * 1024
+            ),
         )
         in collected_hardlimit_metric.samples
     )
