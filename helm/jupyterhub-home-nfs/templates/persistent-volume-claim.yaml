@@ -12,7 +12,7 @@ spec:
   resources:
     requests:
       storage: {{ .Values.persistentVolume.size }}
-  storageClassName: ""
+  storageClassName: {{ .Values.persistentVolume.storageClass }}
   {{- if or .Values.eks.enabled .Values.gke.enabled .Values.openstack.enabled}}
   volumeName: {{ .Release.Name }}-{{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}
   {{- end }}
