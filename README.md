@@ -21,8 +21,6 @@ As a prerequisite, we need to create a volume in the cloud provider to store the
 Here's an example of a values.yaml file that can be used to install the Helm chart:
 
 ```yaml
-prometheusExporter:
-  enabled: true
 gke:
   enabled: true
   volumeId: projects/example-project/zones/europe-west2-b/disks/hub-nfs-homedirs
