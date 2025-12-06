@@ -59,7 +59,7 @@ spec:
         securityContext:
           privileged: true
         ports:
-        - name: home-nfs-metrics
+        - name: metrics
           containerPort: 7500
         volumeMounts:
         - name: home-directories

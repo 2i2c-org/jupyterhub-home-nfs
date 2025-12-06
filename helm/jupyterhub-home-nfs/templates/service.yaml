@@ -20,7 +20,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "jupyterhub-home-nfs.home-nfs.fullname.dash" . }}node-exporter-metrics
+  name: {{ include "jupyterhub-home-nfs.fullname.dash" . }}node-exporter-metrics
   labels:
     {{- include "jupyterhub-home-nfs.labels" . | nindent 4 }}
     app.kubernetes.io/component: node-exporter-metrics
@@ -39,7 +39,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "jupyterhub-home-nfs.home-nfs.fullname.dash" . }}home-nfs-metrics
+  name: {{ include "jupyterhub-home-nfs.fullname.dash" . }}home-nfs-metrics
   labels:
     {{- include "jupyterhub-home-nfs.labels" . | nindent 4 }}
     app.kubernetes.io/component: node-exporter-metrics
