@@ -6,7 +6,7 @@ services:
       target: dev # Specify the development stage
     privileged: true # Needed for mounting XFS
     volumes:
-      - ./jupyterhub_home_nfs:/app
+      - ./:/app
 
   test:
     profiles: ["test"] # This service will only run when explicitly requested
@@ -16,8 +16,7 @@ services:
       target: dev # Specify the development stage
     privileged: true
     volumes:
-      - ./jupyterhub_home_nfs:/app
-      - ./tests:/app/tests
+      - .:/app
     command:
       [
         "/bin/bash",

@@ -5,7 +5,9 @@ import textwrap
 from pprint import pprint  # noqa: F401
 
 import pytest
+from prometheus_client.core import Sample
 
+from jupyterhub_home_nfs import metrics
 from jupyterhub_home_nfs.generate import OWNERSHIP_PREAMBLE, QuotaManager
 
 MOUNT_POINT = "/mnt/docker-test-xfs"
@@ -156,9 +158,9 @@ def test_exclude_dirs(quota_manager):
 
     applied_quotas = quota_manager.get_applied_quotas()
     assert applied_quotas[os.path.join(MOUNT_POINT, "a")] == {
-        "blocks": {"soft": 0, "hard": 1000},
-        "inodes": {"soft": 0, "hard": 0},
-        "realtime": {"soft": 0, "hard": 0},
+        "blocks": {"soft": 0, "hard": 1000, "used": 0},
+        "inodes": {"soft": 0, "hard": 0, "used": 1},
+        "realtime": {"soft": 0, "hard": 0, "used": 0},
     }
 
     # Now reconcile with exclusions
@@ -167,9 +169,9 @@ def test_exclude_dirs(quota_manager):
 
     applied_quotas = quota_manager.get_applied_quotas()
     assert applied_quotas[os.path.join(MOUNT_POINT, "a")] == {
-        "blocks": {"soft": 0, "hard": 0},
-        "inodes": {"soft": 0, "hard": 0},
-        "realtime": {"soft": 0, "hard": 0},
+        "blocks": {"soft": 0, "hard": 0, "used": 0},
+        "inodes": {"soft": 0, "hard": 0, "used": 1},
+        "realtime": {"soft": 0, "hard": 0, "used": 0},
     }
 
     # Create a 2MB test file using a temporary file
@@ -296,8 +298,8 @@ def test_quota_overrides(quota_manager):
     quota_manager.reconcile_step()
 
     invariant_quota = {
-        "inodes": {"soft": 0, "hard": 0},
-        "realtime": {"soft": 0, "hard": 0},
+        "inodes": {"soft": 0, "hard": 0, "used": 1},
+        "realtime": {"soft": 0, "hard": 0, "used": 0},
     }
 
     applied_quotas = quota_manager.get_applied_quotas()
@@ -310,6 +312,7 @@ def test_quota_overrides(quota_manager):
     # 1. "regular": should get default hard_quota (0.001 GiB)
     assert applied_quotas[os.path.join(MOUNT_POINT, "regular")] == {
         "blocks": {
+            "used": 0,
             "soft": 0,
             "hard":
             # Tolerance of 4k default block size
@@ -319,16 +322,14 @@ def test_quota_overrides(quota_manager):
     }
     # 2. "excluded": should get 0 quota (excluded)
     assert applied_quotas[os.path.join(MOUNT_POINT, "excluded")] == {
-        "blocks": {
-            "soft": 0,
-            "hard": 0,
-        },
+        "blocks": {"soft": 0, "hard": 0, "used": 0},
         **invariant_quota,
     }
 
     # 3. "override": should get custom quota (0.005 GiB)
     assert applied_quotas[os.path.join(MOUNT_POINT, "override")] == {
         "blocks": {
+            "used": 0,
             "soft": 0,
             "hard":
             # Tolerance of 4k default block size
@@ -341,6 +342,7 @@ def test_quota_overrides(quota_manager):
     # This tests that quota_overrides takes priority over exclude
     assert applied_quotas[os.path.join(MOUNT_POINT, "both")] == {
         "blocks": {
+            "used": 0,
             "soft": 0,
             "hard":
             # Tolerance of 4k default block size
@@ -409,6 +411,52 @@ def test_quota_overrides(quota_manager):
             )
 
 
+def test_metrics(quota_manager):
+    homedirs = {"user": 1001}
+    create_home_directories(MOUNT_POINT, homedirs)
+
+    quota_manager.paths = [MOUNT_POINT]
+    quota_manager.hard_quota = 0.004  # 4MB
+
+    # Apply the quotas
+    quota_manager.reconcile_step()
+
+    target_file_path = os.path.join(MOUNT_POINT, "user", "test-file.bin")
+    target_file_size_bytes = 2 * 1024 * 1024
+    with open(target_file_path, "w") as f:
+        # Create a 2MB test file
+        f.write("0" * target_file_size_bytes)
+        f.flush()
+
+    quotas = quota_manager.get_applied_quotas()
+    quota_manager.update_metrics(quotas)
+
+    collected_dirsize_metric = list(metrics.TOTAL_SIZE.collect())[0]
+
+    assert len(collected_dirsize_metric.samples) != 0
+    assert (
+        Sample(
+            name="dirsize_total_size_bytes",
+            labels={"directory": "user"},
+            value=target_file_size_bytes,
+        )
+        in collected_dirsize_metric.samples
+    )
+
+    collected_hardlimit_metric = list(metrics.HARD_LIMIT.collect())[0]
+    assert (
+        Sample(
+            name="dirsize_hard_limit_bytes",
+            labels={"directory": "user"},
+            # The value is in bytes, not gb (used by jupyterhub-home-nfs) or kb (used by xfs)
+            value=pytest.approx(
+                0.004 * 1024 * 1024 * 1024, abs=DEFAULT_BLOCK_SIZE_KIB * 1024
+            ),
+        )
+        in collected_hardlimit_metric.samples
+    )
+
+
 def test_quota_overrides_cli(tmp_path):
     """Test that quota overrides can be set via CLI"""
     # Test CLI override (traitlets supports dict parsing from CLI)
@@ -441,13 +489,14 @@ def test_quota_overrides_cli(tmp_path):
     applied_quotas = quota_manager.get_applied_quotas()
     assert applied_quotas[os.path.join(MOUNT_POINT, "test")] == {
         "blocks": {
+            "used": 0,
             "soft": 0,
             "hard":
             # Tolerance of 4k default block size
             pytest.approx(0.002 * GIB_TO_KIB, abs=DEFAULT_BLOCK_SIZE_KIB),
         },
-        "inodes": {"soft": 0, "hard": 0},
-        "realtime": {"soft": 0, "hard": 0},
+        "inodes": {"soft": 0, "hard": 0, "used": 1},
+        "realtime": {"soft": 0, "hard": 0, "used": 0},
     }, "Expected quota of 0.002 GiB for 'test'"
 
 
@@ -470,17 +519,12 @@ def test_quota_clear(quota_manager):
         path = os.path.join(MOUNT_POINT, name)
         assert applied_quotas[path] == {
             "blocks": {
+                "used": 0,
                 "soft": 0,
                 "hard": 1048576,
             },
-            "inodes": {
-                "soft": 0,
-                "hard": 0,
-            },
-            "realtime": {
-                "soft": 0,
-                "hard": 0,
-            },
+            "inodes": {"soft": 0, "hard": 0, "used": 1},
+            "realtime": {"soft": 0, "hard": 0, "used": 0},
         }
 
     # Set ihard quota in an out-of-band way (this is not intended to be preserved by jupyterhub-home-nfs)
@@ -502,14 +546,17 @@ def test_quota_clear(quota_manager):
     path = os.path.join(MOUNT_POINT, "beta")
     assert applied_quotas[path] == {
         "blocks": {
+            "used": 0,
             "soft": 0,
             "hard": 1048576,
         },
         "inodes": {
+            "used": 1,
             "soft": 0,
             "hard": 10,
         },
         "realtime": {
+            "used": 0,
             "soft": 0,
             "hard": 0,
         },
@@ -521,14 +568,17 @@ def test_quota_clear(quota_manager):
         path = os.path.join(MOUNT_POINT, name)
         assert applied_quotas[path] == {
             "blocks": {
+                "used": 0,
                 "soft": 0,
                 "hard": 1048576,
             },
             "inodes": {
+                "used": 1,
                 "soft": 0,
                 "hard": 0,
             },
             "realtime": {
+                "used": 0,
                 "soft": 0,
                 "hard": 0,
             },
@@ -543,14 +593,17 @@ def test_quota_clear(quota_manager):
         path = os.path.join(MOUNT_POINT, name)
         assert applied_quotas[path] == {
             "blocks": {
+                "used": 0,
                 "soft": 0,
                 "hard": 1048576,
             },
             "inodes": {
+                "used": 1,
                 "soft": 0,
                 "hard": 0,
             },
             "realtime": {
+                "used": 0,
                 "soft": 0,
                 "hard": 0,
             },

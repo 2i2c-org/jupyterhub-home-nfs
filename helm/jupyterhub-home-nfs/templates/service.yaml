@@ -16,3 +16,41 @@ spec:
       port: 111
   selector:
     app: nfs-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "jupyterhub-home-nfs.fullname.dash" . }}node-exporter-metrics
+  labels:
+    {{- include "jupyterhub-home-nfs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: node-exporter-metrics
+  annotations:
+    # Scrape the node exporter, running on port 9100
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9100"
+spec:
+  type: ClusterIP
+  ports:
+    - name: node-exporter-http
+      port: 9100
+  selector:
+    app: nfs-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "jupyterhub-home-nfs.fullname.dash" . }}home-nfs-metrics
+  labels:
+    {{- include "jupyterhub-home-nfs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: node-exporter-metrics
+  annotations:
+    # Scrape metrics from jupyterhub_home_nfs on port 7500
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "7500"
+spec:
+  type: ClusterIP
+  ports:
+    - name: jupyterhub-home-nfs-metrics
+      port: 7500
+  selector:
+    app: nfs-server

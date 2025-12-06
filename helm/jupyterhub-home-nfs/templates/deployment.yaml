@@ -26,10 +26,6 @@ spec:
         # https://github.com/jupyterhub/grafana-dashboards/blob/18ba92d98cd297951673850a4c92507479ec4ca2/dashboards/jupyterhub.jsonnet#L322
         component: shared-volume-metrics
       annotations:
-        {{- if .Values.prometheusExporter.enabled }}
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9100"
-        {{- end }}
         # checksum of the config file to trigger a deployment when the config changes
         checksum/ganesha-config: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/mounted-secret: {{ include (print .Template.BasePath "/secret.yaml") . | sha256sum }}
@@ -62,6 +58,9 @@ spec:
         args: ["python", "-m", "jupyterhub_home_nfs.generate", "--config-file", "/etc/jupyterhub-home-nfs/mounted-secret/quota-enforcer-config.py"]
         securityContext:
           privileged: true
+        ports:
+        - name: metrics
+          containerPort: 7500
         volumeMounts:
         - name: home-directories
           mountPath: /export
@@ -88,9 +87,8 @@ spec:
           mountPath: /export
         resources: {{ toJson .Values.autoResizer.resources }}
       {{- end }}
-      {{- if .Values.prometheusExporter.enabled }}
-      - name: metrics-exporter
-        image: "{{ .Values.prometheusExporter.image.repository }}:{{ .Values.prometheusExporter.image.tag }}"
+      - name: node-exporter
+        image: "{{ .Values.nodeExporter.image.repository }}:{{ .Values.nodeExporter.image.tag }}"
         args:
         # Disable default collectors; we only want filesystem metrics
         - --collector.disable-defaults
@@ -98,15 +96,14 @@ spec:
         # Exclude some patterns of mount points to avoid collecting unnecessary metrics
         - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|etc|var/run/.+|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
         ports:
-        - name: metrics
+        - name: node-exporter
           containerPort: 9100
         volumeMounts:
         - name: home-directories
           # Mounting under /shared-volume to match path in dashboard definition in jupyterhub/grafana-dashboards
           mountPath: /shared-volume
           readOnly: true
-        resources: {{ toJson .Values.prometheusExporter.resources }}
-      {{- end }}
+        resources: {{ toJson .Values.nodeExporter.resources }}
       {{- with .Values.extraContainers }}
       {{- tpl (. | toYaml) $ | nindent 6 }}
       {{- end }}

@@ -21,8 +21,6 @@ As a prerequisite, we need to create a volume in the cloud provider to store the
 Here's an example of a values.yaml file that can be used to install the Helm chart:
 
 ```yaml
-prometheusExporter:
-  enabled: true
 gke:
   enabled: true
   volumeId: projects/example-project/zones/europe-west2-b/disks/hub-nfs-homedirs
@@ -73,7 +71,7 @@ helm upgrade --cleanup-on-fail \
 
 ## Security
 
-> [!WARNING]  
+> [!WARNING]
 > By default, the NFS server is accessible from within the cluster without any authentication. It is recommended to restrict access to the NFS server by enforcing Network Policies or enabling a client allow list to grant access only through kubelet and not from the pods directly.
 
 ### Network Policy Enforcement
@@ -172,7 +170,7 @@ Once the container is running, we can run the following command to get a shell i
 docker compose exec -it app bash
 ```
 
-Once we have a shell into the container, we can run `/usr/local/bin/generate.py` with the appropriate arguments to enforce storage quotas on the XFS filesystem.
+Once we have a shell into the container, we can run `python -m jupyterhub_home_nfs.generate` with the appropriate arguments to enforce storage quotas on the XFS filesystem.
 
 ### Running the tests
 

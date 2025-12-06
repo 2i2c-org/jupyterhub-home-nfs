@@ -87,7 +87,7 @@ properties:
       - image
       - config
       - enabled
-  prometheusExporter:
+  nodeExporter:
     type: object
     properties:
       enabled:
@@ -177,6 +177,6 @@ properties:
 required:
   - nfsServer
   - quotaEnforcer
-  - prometheusExporter
+  - nodeExporter
   - persistentVolume
   - service
