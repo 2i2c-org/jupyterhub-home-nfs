@@ -299,10 +299,9 @@ class QuotaManager(Application):
         return {
             path: int(projid)
             for projid, _, path in (
-                line.split() for line in result.strip().splitlines()
+                line.split(None, maxsplit=2) for line in result.strip().splitlines()
             )
         }
-        return
 
     def get_applied_quotas(self):
         """
@@ -330,8 +329,12 @@ class QuotaManager(Application):
 
         quotas = {}
         for line in result.strip().splitlines():
-            items = iter(line.split())
-            path = next(items)
+            parts = line.split()
+            # There are always 15 items at the end of the xfs_quota command output:
+            # 5 items (used, soft, hard, warn, grace) for each of Blocks, Inodes and Realtime
+            items = iter(parts[-15:])
+            # The path (Project Id) is what's left to the left of these items
+            path = "".join(parts[:-15])
             blocks = parse_collection(items)
             inodes = parse_collection(items)
             realtime = parse_collection(items)
