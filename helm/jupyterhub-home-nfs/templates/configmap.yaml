@@ -37,3 +37,17 @@ data:
             Name = VFS;
         }
     }
+
+    NFSv4 {
+        # During the startup grace period, the NFS server only accepts recovery
+        # related operations, and will block normal operations. It is a
+        # mechanism to avoid corruption issues by allowing clients to finalize
+        # things they had a lease for before they lost connectivity, allowing
+        # other clients to start doing new things.
+        #
+        # Lease_Lifetime defaults to 60, and Grace_Period to 90. We retain the
+        # 1.5 ratio as their relative proportions was of importance.
+        #
+        Lease_Lifetime = 20;
+        Grace_Period = 30;
+    }

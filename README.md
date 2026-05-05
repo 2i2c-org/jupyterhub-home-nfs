@@ -142,6 +142,15 @@ initContainers:
       runAsUser: 0
 ```
 
+## Operation
+
+### Server restarts
+
+When restarting the NFS server, it will be in a recovery mode ("in grace") for
+30 seconds where only recovery related operations are allowed. Due to this,
+normal usage is disrupted for about 40 seconds or so if you restart the
+nfs-server pod.
+
 ## Development
 
 ### Prerequisites
