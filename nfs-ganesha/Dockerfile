@@ -1,10 +1,10 @@
-FROM ubuntu:26.04
+FROM ubuntu:24.04
 
 RUN DEBIAN_FRONTEND=noninteractive \
     && apt-get update \
     && apt-get install -y software-properties-common \
-    && add-apt-repository ppa:nfs-ganesha/nfs-ganesha-5 \
-    && add-apt-repository ppa:nfs-ganesha/libntirpc-5 \
+    && add-apt-repository ppa:nfs-ganesha/nfs-ganesha-7 \
+    && add-apt-repository ppa:nfs-ganesha/libntirpc-7 \
     && apt-get update \
     && apt-get install -y netbase nfs-common dbus nfs-ganesha nfs-ganesha-vfs \
     && apt-get clean \
