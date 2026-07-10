@@ -4,7 +4,6 @@ metadata:
   name: {{ include "jupyterhub-home-nfs.home-nfs.fullname" . }}-ganesha-config
 data:
   ganesha.conf: |
-    {{ .Values.nfsServer.extraGaneshaConfig | nindent 4 }}
     EXPORT
     {
         # Export Id (mandatory, each EXPORT must have a unique Export_Id)
