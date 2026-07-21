@@ -4,7 +4,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
     && apt-get update \
     && apt-get install -y \
       netbase nfs-common dbus nfs-ganesha nfs-ganesha-vfs \
-      vim screen rsync less tree \
+      duc git less rsync screen tree vim \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && mkdir -p /run/rpcbind /export /var/run/dbus \
