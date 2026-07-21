@@ -32,8 +32,6 @@ nfsServer:
   allowedClients:
     - "127.0.0.1" # allow localhost
 
-  extraGaneshaConfig: ''
-
 # Automatic filesystem resizer, so increases in underlying disk size
 # are immediately reflected in available file system
 autoResizer:
