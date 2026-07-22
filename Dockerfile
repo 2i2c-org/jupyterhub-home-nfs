@@ -1,3 +1,5 @@
+# If we upgrade this, also update the python version we test with,
+# in .github/workflows/python-package.yml
 FROM ubuntu:24.04 AS base
 
 RUN apt-get update > /dev/null && \
