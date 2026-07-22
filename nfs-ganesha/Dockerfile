@@ -1,18 +1,16 @@
 FROM ubuntu:22.04
 
+# Install nfs-ganesha from official PPA & some useful tools
+# duc: Disk Usage Analyzer (https://duc.zevv.nl/)
+# git, less, rsync, screen, tree, vim: common utilities for development and debugging
 RUN DEBIAN_FRONTEND=noninteractive \
     && apt-get update \
     && apt-get install -y software-properties-common \
     && add-apt-repository ppa:nfs-ganesha/nfs-ganesha-5 \
     && add-apt-repository ppa:nfs-ganesha/libntirpc-5 \
     && apt-get update \
-    && apt-get install -y netbase nfs-common dbus nfs-ganesha nfs-ganesha-vfs
-
-# Install some useful tools
-# duc: Disk Usage Analyzer (https://duc.zevv.nl/)
-# git, less, rsync, screen, tree, vim: common utilities for development and debugging
-RUN DEBIAN_FRONTEND=noninteractive \
-    && apt-get install -y duc git less rsync screen tree vim \
+    && apt-get install -y netbase nfs-common dbus nfs-ganesha nfs-ganesha-vfs \
+        duc git less rsync screen tree vim \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && mkdir -p /run/rpcbind /export /var/run/dbus \
