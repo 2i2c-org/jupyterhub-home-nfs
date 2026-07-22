@@ -198,8 +198,7 @@ def test_config_file(tmp_path):
     projid_path = os.fspath(tmp_path / "projid")
     config_file_path.write_text(
         # Write test config
-        textwrap.dedent(
-            f"""
+        textwrap.dedent(f"""
             c.QuotaManager.projects_file = {projects_path!r}
             c.QuotaManager.projid_file = {projid_path!r}
             c.QuotaManager.paths = [{MOUNT_POINT!r}]
@@ -209,8 +208,7 @@ def test_config_file(tmp_path):
                 "override": 0.005,  # 5MB custom quota
                 "both": 0.003,  # 3MB custom quota (should override exclude)
             }}
-        """
-        )
+        """)
     )
 
     # Create QuotaManager instance with our config
@@ -234,15 +232,13 @@ def test_config_file_override(tmp_path):
     config_file_path = tmp_path / "config.py"
     config_file_path.write_text(
         # Write test config
-        textwrap.dedent(
-            f"""
+        textwrap.dedent(f"""
             c.QuotaManager.projects_file = {os.fspath(tmp_path / "projects")!r}
             c.QuotaManager.projid_file = {os.fspath(tmp_path / "projid")!r}
             c.QuotaManager.paths = [{MOUNT_POINT!r}]
             c.QuotaManager.hard_quota = 0.003 # 3MB
             c.QuotaManager.exclude = ["c", "d"]
-        """
-        )
+        """)
     )
     # Test command line override
     manager = QuotaManager()
