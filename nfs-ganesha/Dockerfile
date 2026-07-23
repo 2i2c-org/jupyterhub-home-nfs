@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 # Install nfs-ganesha from official PPA & some useful tools
 # duc: Disk Usage Analyzer (https://duc.zevv.nl/)
