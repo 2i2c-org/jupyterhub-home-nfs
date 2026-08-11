@@ -1,16 +1,30 @@
-FROM ubuntu:22.04
+FROM debian:forky AS build
+
+# Rebuild nfs-ganesha with QOS enabled
+RUN DEBIAN_FRONTEND=noninteractive \
+    && sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
+    && apt-get build-dep -y nfs-ganesha \
+    && apt-get source nfs-ganesha \
+    && cd nfs-ganesha-*/ \
+    && sed '/-DUSE_FSAL_XFS=NO \\/ a\             -DENABLE_QOS=YES \\'  debian/rules \
+    && dpkg-buildpackage -rfakeroot \
+    && cd ../ \
+    && mv nfs-ganesha_*_amd64.deb ganesha-pkg.deb 
+
+# Consume build package
+FROM debian:forky
+COPY --from=build /ganesha-pkg.deb /ganesha-pkg.deb
 
 # Install nfs-ganesha from official PPA & some useful tools
 # duc: Disk Usage Analyzer (https://duc.zevv.nl/)
 # git, less, rsync, screen, tree, vim: common utilities for development and debugging
 RUN DEBIAN_FRONTEND=noninteractive \
     && apt-get update \
-    && apt-get install -y software-properties-common \
-    && add-apt-repository ppa:nfs-ganesha/nfs-ganesha-5 \
-    && add-apt-repository ppa:nfs-ganesha/libntirpc-5 \
-    && apt-get update \
-    && apt-get install -y netbase nfs-common dbus nfs-ganesha nfs-ganesha-vfs \
+    && apt-get install -y \
+      netbase nfs-common dbus /ganesha-pkg.deb  nfs-ganesha-vfs \
         duc git less rsync screen tree vim \
+    && rm /ganesha-pkg.deb \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && mkdir -p /run/rpcbind /export /var/run/dbus \

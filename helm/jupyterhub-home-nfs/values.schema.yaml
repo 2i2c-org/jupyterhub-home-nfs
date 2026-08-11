@@ -16,6 +16,8 @@ properties:
           - tag
       resources:
         type: object
+      extraGaneshaConfig:
+        type: string
     required:
       - image
   autoResizer:
