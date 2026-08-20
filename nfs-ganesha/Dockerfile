@@ -10,11 +10,12 @@ RUN DEBIAN_FRONTEND=noninteractive \
     && sed '/-DUSE_FSAL_XFS=NO \\/ a\             -DENABLE_QOS=YES \\'  debian/rules \
     && dpkg-buildpackage -rfakeroot \
     && cd ../ \
-    && mv nfs-ganesha_*_amd64.deb ganesha-pkg.deb 
+    && mv nfs-ganesha_*_amd64.deb ganesha.deb \
+    && mv nfs-ganesha-vfs_*_amd64.deb ganesha-vfs.deb
 
 # Consume build package
 FROM debian:forky
-COPY --from=build /ganesha-pkg.deb /ganesha-pkg.deb
+COPY --from=build /ganesha.deb /ganesha-vfs.deb /
 
 # Install nfs-ganesha from official PPA & some useful tools
 # duc: Disk Usage Analyzer (https://duc.zevv.nl/)
@@ -22,9 +23,9 @@ COPY --from=build /ganesha-pkg.deb /ganesha-pkg.deb
 RUN DEBIAN_FRONTEND=noninteractive \
     && apt-get update \
     && apt-get install -y \
-      netbase nfs-common dbus /ganesha-pkg.deb  nfs-ganesha-vfs \
+      netbase nfs-common dbus /ganesha.deb /ganesha-vfs.deb \
         duc git less rsync screen tree vim \
-    && rm /ganesha-pkg.deb \
+    && rm /ganesha-*.deb \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && mkdir -p /run/rpcbind /export /var/run/dbus \
