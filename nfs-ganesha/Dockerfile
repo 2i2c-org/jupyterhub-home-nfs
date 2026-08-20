@@ -25,7 +25,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
     && apt-get install -y \
       netbase nfs-common dbus /ganesha.deb /ganesha-vfs.deb \
         duc git less rsync screen tree vim \
-    && rm /ganesha-pkg.deb \
+    && rm /ganesha-*.deb \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && mkdir -p /run/rpcbind /export /var/run/dbus \
