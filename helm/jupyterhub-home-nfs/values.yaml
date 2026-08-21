@@ -34,9 +34,9 @@ nfsServer:
 
   qos:
     enabled: false
-    iops: 
+    iops:
       enabled: false
-    bandwidth: 
+    bandwidth:
       enabled: false
 
   extraGaneshaConfig: ''

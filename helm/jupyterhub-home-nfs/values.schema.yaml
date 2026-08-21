@@ -31,17 +31,17 @@ properties:
                 properties:
                   combined:
                     type: number
-                  required:
-                    - "combined"
+                required:
+                  - combined
               - type: object
                 properties:
                   read:
                     type: number
                   write:
                     type: number
-                  required:
-                    - "read"
-                    - "write"
+                required:
+                  - read
+                  - write
             required:
               - enabled
           bandwidth:
@@ -54,17 +54,17 @@ properties:
                 properties:
                   combined:
                     type: number
-                  required:
-                    - "combined"
+                required:
+                  - combined
               - type: object
                 properties:
                   read:
                     type: number
                   write:
                     type: number
-                  required:
-                    - "read"
-                    - "write"
+                required:
+                  - read
+                  - write
             required:
               - enabled
       extraGaneshaConfig:
