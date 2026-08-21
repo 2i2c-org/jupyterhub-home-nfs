@@ -18,7 +18,7 @@ data:
         {{- if not (empty .combined) }}
         enable_bw_control = true;
         combined_rw_bw_control = true;
-        {- /* Max Bandwidth is smaller than max int64 */}
+        {{- /* Max Bandwidth is smaller than max int64 */}}
         max_client_combined_bw = {{ int64 .combined }};      
         {{- else }}
         enable_bw_control = true;
