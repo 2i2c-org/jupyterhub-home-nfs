@@ -34,15 +34,21 @@ properties:
                 - type: object
                   properties:
                     combined:
-                      type: number
+                      type: integer
+                      minimum: 8
+                      maximum: 1638400
                   required:
                     - combined
                 - type: object
                   properties:
                     read:
-                      type: number
+                      type: integer
+                      minimum: 8
+                      maximum: 1638400
                     write:
-                      type: number
+                      type: integer
+                      minimum: 8
+                      maximum: 1638400
                   required:
                     - read
                     - write
@@ -59,15 +65,21 @@ properties:
                 - type: object
                   properties:
                     combined:
-                      type: number
+                      type: integer
+                      minimum: 32768
+                      maximum: 107374182400
                   required:
                     - combined
                 - type: object
                   properties:
                     read:
-                      type: number
+                      type: integer
+                      minimum: 32768
+                      maximum: 107374182400
                     write:
-                      type: number
+                      type: integer
+                      minimum: 32768
+                      maximum: 107374182400
                   required:
                     - read
                     - write

@@ -18,14 +18,15 @@ data:
         {{- if not (empty .combined) }}
         enable_bw_control = true;
         combined_rw_bw_control = true;
-        max_client_combined_bw = {{ .combined }};      
+        {- /* Max Bandwidth is smaller than max int64 */}
+        max_client_combined_bw = {{ int64 .combined }};      
         {{- else }}
         enable_bw_control = true;
         {{- if not (empty .read) }}
-        max_client_read_bw = {{ .read }};      
+        max_client_read_bw = {{ int64 .read }};      
         {{- end }}
         {{- if not (empty .write) }}
-        max_client_write_bw = {{ .write }};   
+        max_client_write_bw = {{ int64 .write }};   
         {{- end }}
         {{- end }}
         {{- end }}
@@ -36,14 +37,14 @@ data:
         {{- if not (empty .combined) }}
         enable_iops_control = true;
         combined_rw_iops_control = true;
-        max_client_combined_iops = {{ .combined }};      
+        max_client_combined_iops = {{ int64 .combined }};      
         {{- else }}
         enable_iops_control = true;
         {{- if not (empty .read) }}
-        max_client_read_iops = {{ .read }};      
+        max_client_read_iops = {{ int64 .read }};      
         {{- end }}
         {{- if not (empty .write) }}
-        max_client_write_iops = {{ .write }};   
+        max_client_write_iops = {{ int64 .write }};   
         {{- end }}
         {{- end }}
         {{- end }}
