@@ -5,6 +5,51 @@ metadata:
 data:
   ganesha.conf: |
     {{ .Values.nfsServer.extraGaneshaConfig | nindent 4 }}
+    {{- if .Values.nfsServer.qos.enabled }}
+    QOS_DEFAULT_CONFIG {
+        enable_qos = true;
+
+        # We only use Ganesha with one export, 
+        # so only set this on client vs. per_export_per_client
+        qos_type = "Per_Client";
+
+        {{- with .Values.nfsServer.qos.bandwidth }}
+        {{- if .enabled }}
+        {{- if not (empty .combined) }}
+        enable_bw_control = true;
+        combined_rw_bw_control = true;
+        max_client_combined_bw = {{ .combined }};      
+        {{- else }}
+        enable_bw_control = true;
+        {{- if not (empty .read) }}
+        max_client_read_bw = {{ .read }};      
+        {{- end }}
+        {{- if not (empty .write) }}
+        max_client_write_bw = {{ .write }};   
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+
+        {{- with .Values.nfsServer.qos.iops }}
+        {{- if .enabled }}
+        {{- if not (empty .combined) }}
+        enable_iops_control = true;
+        combined_rw_iops_control = true;
+        max_client_combined_iops = {{ .combined }};      
+        {{- else }}
+        enable_iops_control = true;
+        {{- if not (empty .read) }}
+        max_client_read_iops = {{ .read }};      
+        {{- end }}
+        {{- if not (empty .write) }}
+        max_client_write_iops = {{ .write }};   
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+    }
+    {{- end }}
     EXPORT
     {
         # Export Id (mandatory, each EXPORT must have a unique Export_Id)

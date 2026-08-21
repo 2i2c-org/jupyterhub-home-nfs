@@ -16,6 +16,57 @@ properties:
           - tag
       resources:
         type: object
+      qos:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+          iops:
+            type: object
+            properties:
+              enabled:
+                type: boolean
+            oneOf:
+              - type: object
+                properties:
+                  combined:
+                    type: number
+                  required:
+                    - "combined"
+              - type: object
+                properties:
+                  read:
+                    type: number
+                  write:
+                    type: number
+                  required:
+                    - "read"
+                    - "write"
+            required:
+              - enabled
+          bandwidth:
+            type: object
+            properties:
+              enabled:
+                type: boolean
+            oneOf:
+              - type: object
+                properties:
+                  combined:
+                    type: number
+                  required:
+                    - "combined"
+              - type: object
+                properties:
+                  read:
+                    type: number
+                  write:
+                    type: number
+                  required:
+                    - "read"
+                    - "write"
+            required:
+              - enabled
       extraGaneshaConfig:
         type: string
     required:
