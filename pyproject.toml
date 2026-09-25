@@ -17,8 +17,12 @@ classifiers = [
 dependencies = [
     "traitlets>=5.13.0",
     "ruamel-yaml==0.18.10",
-    "prometheus-client"
+    "prometheus-client",
+    "escapism"
 ]
+
+[dependency-groups]
+mypy = ["mypy"]
 
 [project.urls]
 Homepage = "https://github.com/2i2c-org/jupyterhub-home-nfs"
@@ -69,3 +73,6 @@ search = 'baseVersion: {current_version}'
 
 [tool.isort]
 profile = "black"
+
+[tool.mypy]
+strict = true

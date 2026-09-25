@@ -30,18 +30,24 @@ This script *owns* /etc/projects and /etc/projid (or equivalent). If there are e
 there that aren't put in there by this script, they will be removed!
 """
 
+from __future__ import annotations
+
 import contextlib
 import itertools
 import logging
 import os
 import os.path
+import pathlib
+import string
 import subprocess
 import sys
 import tempfile
 import time
+import typing
 
-from prometheus_client import start_http_server
-from traitlets import Bool, Dict, Float, Int, List, Unicode
+import escapism  # type: ignore
+from prometheus_client import start_http_server  # type: ignore
+from traitlets import Bool, Dict, Float, Int, List, Unicode, validate
 from traitlets.config import Application
 
 from . import metrics
@@ -52,25 +58,41 @@ OWNERSHIP_PREAMBLE = (
 )
 
 
+PathLike: typing.TypeAlias = pathlib.Path | str
+ProjectName = typing.NewType("ProjectName", str)
+
+
+class Quota(typing.TypedDict):
+    soft: int
+    hard: int
+    used: int
+
+
+class ProjectQuotas(typing.TypedDict):
+    blocks: Quota
+    inodes: Quota
+    realtime: Quota
+
+
 @contextlib.contextmanager
-def open_replace_atomic(path, *, mode="w"):
+def open_writable_atomic(path: PathLike) -> typing.Generator[typing.TextIO]:
     """Open a temporary file in the same directory as `path`. Upon leaving the context,
     use atomic `os.replace` to move the file to the proper destination, enabling
     atomic writing."""
     path_dir, name = os.path.split(path)
-    temp_fd, temp_path = tempfile.mkstemp(dir=path_dir, prefix=name)
-    with open(temp_path, mode) as f:
+    _, temp_path = tempfile.mkstemp(dir=path_dir, prefix=name)
+    with open(temp_path, "w") as f:
         yield f
     os.replace(temp_path, path)
 
 
 def logged_check_call(
-    args,
-    logger,
+    args: list[str],
+    logger: logging.Logger,
     *,
-    log_stdout=True,
-    log_stderr=True,
-):
+    log_stdout: bool = True,
+    log_stderr: bool = True,
+) -> str:
     """
     Run `subprocess.check_call` with a logger to output stdio.
     Return the stdout of the stream.
@@ -83,6 +105,7 @@ def logged_check_call(
         stderr=stderr_kind,
         encoding="utf8",
         errors="surrogateescape",
+        check=False,
     )
 
     # Set log level according to return code
@@ -105,6 +128,9 @@ def logged_check_call(
 class QuotaManager(Application):
     # Config file can be loaded from this location
     config_file = Unicode("", help="The config file to load").tag(config=True)
+    escape_char = Unicode("&", help="The escape character for file paths").tag(
+        config=True
+    )
 
     # Define all configuration parameters as traitlets
     paths = List(
@@ -173,7 +199,28 @@ class QuotaManager(Application):
         "gid": "QuotaManager.gid",
     }
 
-    def initialize(self, argv=None):
+    @validate("escape_char")
+    def _validate(self, proposal: dict) -> str:
+        if len(proposal["value"]) != 1:
+            raise ValueError("Expected length-1 string")
+        return proposal["value"]
+
+    def path_to_project_name(self, path: PathLike) -> ProjectName:
+        return typing.cast(
+            ProjectName,
+            escapism.escape(
+                str(path),
+                escape_char=self.escape_char,
+                safe=string.ascii_letters
+                + string.digits
+                + "".join(set(string.punctuation) - {"#", self.escape_char, ":"}),
+            ),
+        )
+
+    def project_name_to_path(self, name: ProjectName) -> pathlib.Path:
+        return pathlib.Path(escapism.unescape(name, escape_char=self.escape_char))
+
+    def initialize(self, argv: list[str] | None = None) -> None:
         self.parse_command_line(argv)
         if self.config_file:
             self.load_config_file(self.config_file)
@@ -182,35 +229,34 @@ class QuotaManager(Application):
             self.log.error("No paths specified!")
             sys.exit(1)
 
-    def mountpoint_for(self, path):
+    def mountpoint_for(self, project: ProjectName) -> pathlib.Path:
         """
         Return mount point containing file / directory in path
 
         xfs_quota wants to know which fs to operate on
         """
+        path = self.project_name_to_path(project)
         result = logged_check_call(
             ["df", "--output=target", os.fspath(path)], self.log, log_stdout=False
         )
-        return result.strip().splitlines()[-1].strip()
+        return pathlib.Path(result.strip().splitlines()[-1].strip())
 
-    def parse_projids(self, path):
+    def parse_projids(self, path: PathLike) -> dict[ProjectName, int]:
         """
         Parse a projids file, returning mapping of paths to project IDs
         """
         if not os.path.exists(path):
             return {}
-        projects = {}
+        projects: dict[ProjectName, int] = {}
         with open(path) as f:
             for line in f:
                 if line.lstrip().startswith("#"):
                     continue
-                proj_path, _projid = line.split(":", 2)
-                projid = int(_projid)
-
-                projects[proj_path] = projid
+                project_name, _projid = line.rsplit(":", 1)
+                projects[typing.cast(ProjectName, project_name)] = int(_projid)
         return projects
 
-    def reconcile_projfiles(self, *, is_dirty=False):
+    def reconcile_projfiles(self, *, is_dirty: bool = False) -> None:
         """
         Make sure each homedir in paths has an appropriate projid entry.
 
@@ -219,7 +265,7 @@ class QuotaManager(Application):
         """
         # Fetch existing home directories
         # Sort to provide consistent ordering across runs
-        homedirs = []
+        homedirs: list[ProjectName] = []
         for path in self.paths:
             # Create the directory if it doesn't exist and make sure is owned by uid:gid
             os.makedirs(path, exist_ok=True)
@@ -227,10 +273,9 @@ class QuotaManager(Application):
             for ent in os.scandir(path):
                 if ent.is_dir():
                     if ent.name.startswith("."):
-                        self.log.warn(f"Found hidden directory {ent.name}, ignoring")
+                        self.log.warning(f"Found hidden directory {ent.name}, ignoring")
                         continue
-                    homedirs.append(ent.path)
-
+                    homedirs.append(self.path_to_project_name(ent.path))
         homedirs.sort()
         self.log.debug(f"homedirs: {homedirs}")
 
@@ -244,8 +289,7 @@ class QuotaManager(Application):
         self.log.debug(f"projects: {projects}")
 
         # We have to write /etc/projid & /etc/projects if they aren't completely in sync
-        projid_file_dirty = sorted(list(projects.keys())) != sorted(homedirs)
-
+        projid_file_dirty = sorted(projects.keys()) != sorted(homedirs)
         if projid_file_dirty:
             # Make sure /etc/projid & /etc/projects are in sync with home dirs
             for home in homedirs:
@@ -259,14 +303,15 @@ class QuotaManager(Application):
             projects = {k: v for k, v in projects.items() if k in homedirs}
 
             with (
-                open_replace_atomic(self.projects_file) as projects_file,
-                open_replace_atomic(self.projid_file) as projid_file,
+                open_writable_atomic(self.projects_file) as projects_file,
+                open_writable_atomic(self.projid_file) as projid_file,
             ):
                 projects_file.write(OWNERSHIP_PREAMBLE)
                 projid_file.write(OWNERSHIP_PREAMBLE)
-                for path, id in projects.items():
-                    projid_file.write(f"{path}:{id}\n")
-                    projects_file.write(f"{id}:{path}\n")
+                for project, project_id in projects.items():
+                    project_path = self.project_name_to_path(project)
+                    projid_file.write(f"{project}:{project_id}\n")
+                    projects_file.write(f"{project_id}:{project_path}\n")
 
             self.log.debug(
                 f"Writing projid to {self.projid_file} and projects to {self.projects_file}"
@@ -277,13 +322,13 @@ class QuotaManager(Application):
             os.path.exists(self.projects_file) or os.path.exists(self.projid_file)
         ):
             with (
-                open_replace_atomic(self.projects_file) as projects_file,
-                open_replace_atomic(self.projid_file) as projid_file,
+                open_writable_atomic(self.projects_file) as projects_file,
+                open_writable_atomic(self.projid_file) as projid_file,
             ):
                 projects_file.write(OWNERSHIP_PREAMBLE)
                 projid_file.write(OWNERSHIP_PREAMBLE)
 
-    def get_applied_projects(self):
+    def get_applied_projects(self) -> dict[ProjectName, int]:
         """
         Determine existing applied project IDs
         """
@@ -300,15 +345,14 @@ class QuotaManager(Application):
             )
 
             return {}
-
         return {
-            path: int(projid)
-            for projid, _, path in (
+            typing.cast(ProjectName, name): int(projid)
+            for projid, _, name in (
                 line.split(None, maxsplit=2) for line in result.strip().splitlines()
             )
         }
 
-    def get_applied_quotas(self):
+    def get_applied_quotas(self) -> dict[ProjectName, ProjectQuotas]:
         """
         Determine existing applied quotas
         """
@@ -328,27 +372,29 @@ class QuotaManager(Application):
         )
 
         # Parse a collection of quotas (e.g. blocks, inodes)
-        def parse_collection(quotas):
+        def parse_collection(quotas: typing.Iterable[str]) -> Quota:
             used, soft, hard, warn, grace = itertools.islice(quotas, 5)
             return {"soft": int(soft), "hard": int(hard), "used": int(used)}
 
-        quotas = {}
+        quotas: dict[ProjectName, ProjectQuotas] = {}
         for line in result.strip().splitlines():
             parts = line.split()
             # There are always 15 items at the end of the xfs_quota command output:
             # 5 items (used, soft, hard, warn, grace) for each of Blocks, Inodes and Realtime
             items = iter(parts[-15:])
             # The path (Project Id) is what's left to the left of these items
-            path = "".join(parts[:-15])
+            project = typing.cast(ProjectName, "".join(parts[:-15]))
+
             blocks = parse_collection(items)
             inodes = parse_collection(items)
             realtime = parse_collection(items)
+
             # Everything here is in kb, since that's what xfs_quota reports things in
-            quotas[path] = {"blocks": blocks, "inodes": inodes, "realtime": realtime}
+            quotas[project] = {"blocks": blocks, "inodes": inodes, "realtime": realtime}
 
         return quotas
 
-    def quota_is_dirty(self, quotas, intended_block_quota):
+    def quota_is_dirty(self, quotas: ProjectQuotas, intended_block_quota: int) -> bool:
         """
         Determine whether the filesystem quota values are dirty with respect to intended quotas
         """
@@ -357,26 +403,35 @@ class QuotaManager(Application):
 
         # Have any other quotas changed?
         return any(
-            quotas[group][kind]
+            quotas[group][kind]  # type: ignore[literal-required]
             for group, kind in itertools.product(
                 ("inodes", "realtime"), ("hard", "soft")
             )
         )
 
-    def update_metrics(self, applied_quotas: dict[str, dict]):
-        for directory_path, quotas in applied_quotas.items():
+    def update_metrics(self, applied_quotas: dict[ProjectName, ProjectQuotas]) -> None:
+        for project, quotas in applied_quotas.items():
+            project_path = self.project_name_to_path(project)
             # Let's determine directory name to not be the full path (as that's an implementation detail)
             # but just the specific path that's beyond the common base path.
             directory_name = None
-            for path in self.paths:
-                if directory_path.startswith(path):
-                    # FIXME: Is there some sort of directory traversal attack possible here?
-                    directory_name = directory_path[len(path) + 1 :]
+            for _path in self.paths:
+                path = pathlib.Path(_path)
+
+                # We have multiple roots (paths), is the project path contained by this path?
+                if project_path.is_relative_to(path):
+                    relative_path = project_path.relative_to(path)
+                    if len(relative_path.parts) != 1:
+                        self.log.error(f"Found non-trivial sub-path: {relative_path}")
+                        continue
+
+                    (directory_name,) = relative_path.parts
                     break
 
-            if directory_name is None:
+            else:
                 # This isn't managed by us
                 continue
+
             # xfs_quotas sets things in KB, so let's convert it to bytes
             metrics.HARD_LIMIT.labels(directory=directory_name).set(
                 quotas["blocks"]["hard"] * 1024
@@ -385,7 +440,7 @@ class QuotaManager(Application):
                 quotas["blocks"]["used"] * 1024
             )
 
-    def reconcile_quotas(self, *, is_dirty=False):
+    def reconcile_quotas(self, *, is_dirty: bool = False) -> None:
         """
         Make sure each project in /etc/projid has correct hard quota set
         """
@@ -405,13 +460,12 @@ class QuotaManager(Application):
         applied_projects = self.get_applied_projects()
 
         self.update_metrics(applied_quotas)
-
         self.log.debug(f"Applied quotas: {applied_quotas}")
-
         # Set quotas based on priority: quota_overrides > exclude_dirs > hard_quota_kb
         intended_quotas = {}
         for project in projects:
-            dirname = os.path.basename(project)
+            project_path = self.project_name_to_path(project)
+            dirname = os.path.basename(project_path)
             if dirname in quota_overrides_kb:
                 # Override takes highest priority
                 intended_quotas[project] = quota_overrides_kb[dirname]
@@ -457,7 +511,7 @@ class QuotaManager(Application):
                         f"{self.projects_file}",
                         "-P",
                         f"{self.projid_file}",
-                        mountpoint,
+                        os.fspath(mountpoint),
                     ],
                     self.log,
                     # stderr can be huge for this call, because it includes verbose per-file information
@@ -485,7 +539,7 @@ class QuotaManager(Application):
                         f"{self.projects_file}",
                         "-P",
                         f"{self.projid_file}",
-                        mountpoint,
+                        os.fspath(mountpoint),
                     ],
                     self.log,
                 )
@@ -496,11 +550,13 @@ class QuotaManager(Application):
                 )
                 continue
 
-    def reconcile_step(self, *, projfiles_is_dirty=False, quotas_is_dirty=False):
+    def reconcile_step(
+        self, *, projfiles_is_dirty: bool = False, quotas_is_dirty: bool = False
+    ) -> None:
         self.reconcile_projfiles(is_dirty=projfiles_is_dirty)
         self.reconcile_quotas(is_dirty=quotas_is_dirty)
 
-    def start(self):
+    def start(self) -> None:
         if self.enable_metrics:
             metrics_server, metrics_server_thread = start_http_server(self.metrics_port)
         try:
@@ -513,7 +569,7 @@ class QuotaManager(Application):
                 metrics_server_thread.join()
 
 
-def main():
+def main() -> None:
     QuotaManager.launch_instance()
 
 
