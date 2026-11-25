@@ -211,8 +211,7 @@ class QuotaManager(Application):
             escapism.escape(
                 str(path),
                 escape_char=self.escape_char,
-                safe=string.ascii_letters
-                + string.digits
+                safe=string.ascii_letters + string.digits
                 # Comments, separators, and our chosen escape character are not safe!
                 + "".join({*string.punctuation} - {"#", self.escape_char, ":"}),
             ),
