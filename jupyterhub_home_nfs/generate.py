@@ -213,7 +213,8 @@ class QuotaManager(Application):
                 escape_char=self.escape_char,
                 safe=string.ascii_letters
                 + string.digits
-                + "".join(set(string.punctuation) - {"#", self.escape_char, ":"}),
+                # Comments, separators, and our chosen escape character are not safe!
+                + "".join({*string.punctuation} - {"#", self.escape_char, ":"}),
             ),
         )
 
