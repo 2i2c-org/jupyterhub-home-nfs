@@ -58,7 +58,13 @@ repos:
     rev: "7.3.0"
     hooks:
       - id: flake8
-
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: "v2.3.1"
+    hooks:
+      - id: mypy
+        args: [--config-file, pyproject.toml]
+        additional_dependencies: []
+        files: ^src/
 # pre-commit.ci config reference: https://pre-commit.ci/#configuration
 ci:
   autoupdate_schedule: monthly
