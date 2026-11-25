@@ -638,7 +638,8 @@ def test_project_clear(quota_manager):
 
 def test_complex_projid(quota_manager):
     """
-    Test that we can exclude dirs from quota enforcement
+    Test that we can use complicated project IDS of the form `foo:bar`
+    and `foo bar`.
     """
     quota_manager.paths = [MOUNT_POINT]
 
