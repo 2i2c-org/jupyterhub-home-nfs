@@ -243,7 +243,7 @@ class QuotaManager(Application):
 
     def parse_projids(self, path: PathLike) -> dict[ProjectName, int]:
         """
-        Parse a projids file, returning mapping of paths to project IDs
+        Parse a projids file, returning mapping of project names to project IDs
         """
         if not os.path.exists(path):
             return {}
@@ -265,7 +265,7 @@ class QuotaManager(Application):
         """
         # Fetch existing home directories
         # Sort to provide consistent ordering across runs
-        homedirs: list[ProjectName] = []
+        project_names: list[ProjectName] = []
         for path in self.paths:
             # Create the directory if it doesn't exist and make sure is owned by uid:gid
             os.makedirs(path, exist_ok=True)
@@ -275,9 +275,9 @@ class QuotaManager(Application):
                     if ent.name.startswith("."):
                         self.log.warning(f"Found hidden directory {ent.name}, ignoring")
                         continue
-                    homedirs.append(self.path_to_project_name(ent.path))
-        homedirs.sort()
-        self.log.debug(f"homedirs: {homedirs}")
+                    project_names.append(self.path_to_project_name(ent.path))
+        project_names.sort()
+        self.log.debug(f"projects from paths: {project_names}")
 
         if is_dirty:
             projects = {}
@@ -286,21 +286,21 @@ class QuotaManager(Application):
             # Fetch list of projects in /etc/projid file, assumed to sync'd to /etc/projects file
             projects = self.parse_projids(self.projid_file)
 
-        self.log.debug(f"projects: {projects}")
+        self.log.debug(f"known projects: {projects}")
 
         # We have to write /etc/projid & /etc/projects if they aren't completely in sync
-        projid_file_dirty = sorted(projects.keys()) != sorted(homedirs)
+        projid_file_dirty = sorted(projects.keys()) != sorted(project_names)
         if projid_file_dirty:
             # Make sure /etc/projid & /etc/projects are in sync with home dirs
-            for home in homedirs:
+            for home in project_names:
                 if home in projects:
                     continue
                 # Ensure an entry exists in projects
                 projects[home] = max(projects.values() or [self.min_projid]) + 1
                 self.log.debug(f"Found new project {home}")
 
-            # Remove projects that don't have corresponding homedirs
-            projects = {k: v for k, v in projects.items() if k in homedirs}
+            # Remove projects that weren't seen on disk
+            projects = {k: v for k, v in projects.items() if k in project_names}
 
             with (
                 open_writable_atomic(self.projects_file) as projects_file,
