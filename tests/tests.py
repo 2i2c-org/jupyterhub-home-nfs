@@ -660,3 +660,6 @@ def test_complex_projid(quota_manager):
             "inodes": {"soft": 0, "hard": 0, "used": 1},
             "realtime": {"soft": 0, "hard": 0, "used": 0},
         }
+
+    assert quota_manager.path_to_project_name("user:name") == "user@3Aname"
+    assert quota_manager.path_to_project_name("frob foo bar") == "frob@20foo@20bar"
